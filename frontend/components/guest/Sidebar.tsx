@@ -2,11 +2,8 @@
 
 import {
     LayoutDashboard,
-    Activity,
-    Bell,
-    Monitor,
-    UsersRound,
-    ClipboardList,
+    CalendarClock,
+    BarChart2,
     SlidersHorizontal,
     LogOut,
     Menu,
@@ -22,37 +19,22 @@ import { useGetMyDetailsMutation } from "../../lib/redux/slices/AuthSlice";
 const items = [
     {
         title: "Dashboard",
-        url: "/Admin",
+        url: "/guest",
         icon: LayoutDashboard,
     },
     {
-        title: "Network Monitoring",
-        url: "/Admin/Network-Monitoring",
-        icon: Activity,
+        title: "Session Info",
+        url: "/guest/Session-Info",
+        icon: CalendarClock,
     },
     {
-        title: "Alerts",
-        url: "/Admin/Alerts",
-        icon: Bell,
-    },
-    {
-        title: "Devices",
-        url: "/Admin/Devices",
-        icon: Monitor,
-    },
-    {
-        title: "Users",
-        url: "/Admin/Users",
-        icon: UsersRound,
-    },
-    {
-        title: "Reports",
-        url: "/Admin/Reports",
-        icon: ClipboardList,
+        title: "Usage Info",
+        url: "/guest/Usage-Info",
+        icon: BarChart2,
     },
     {
         title: "Profile & settings",
-        url: "/Admin/Profile-settings",
+        url: "/guest/Profile-settings",
         icon: SlidersHorizontal,
     },
 ];
