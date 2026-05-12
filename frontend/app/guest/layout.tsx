@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import Navbar from "@/components/admin/Navbar";
-import AdminSideBar from "@/components/admin/Sidebar";
+import Navbar from "@/components/guest/Navbar";
+import SideBar from "@/components/guest/Sidebar";
 
 interface UserProfile {
     username: string;
@@ -21,7 +21,7 @@ export default function RootLayout({
 
     return (
         <div className="flex flex-row w-full min-h-screen lg:w-[90%] bg-none">
-            <AdminSideBar />
+            <SideBar />
             <div className="flex flex-col ml-auto w-full lg:w-[78%]">
                 <Navbar onSearch={(query: string) => { /* handle search here */ }} />
                 {children}
