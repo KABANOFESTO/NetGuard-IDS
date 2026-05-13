@@ -1,59 +1,54 @@
+"use client";
+
 import { Bell, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
-import { Badge, DataTable, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
+
+import { Badge, DataTable, EmptyState, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
+import { useGetNetworkActivitiesQuery } from "@/lib/redux/slices/MonitoringSlice";
+import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatters";
 
 export default function StudentAlertsPage() {
+  const { data: activities = [], isLoading } = useGetNetworkActivitiesQuery({ is_suspicious: true });
+  const notices = activities.filter((activity) => activity.is_suspicious);
+  const resolvedNotices = activities.filter((activity) => !activity.is_suspicious && activity.outcome === "success");
+
   return (
     <div className="space-y-6 bg-slate-50 px-4 py-6 md:px-6 lg:px-8">
       <PageHeader
         eyebrow="Student Alerts"
         title="Review security notices linked to your account."
-        description="Students can see advisory-level warnings, login issues, and device notices that help them keep their campus access secure."
+        description="Students see advisory-level monitoring notices based on their own activity, such as suspicious login patterns, restricted-access attempts, or device-related issues."
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard icon={Bell} label="Open notices" value="2" detail="Items that still need student attention." tone="amber" />
-        <StatCard icon={ShieldAlert} label="Account warnings" value="1" detail="One warning tied to repeated failed login attempts." tone="rose" />
-        <StatCard icon={ShieldCheck} label="Resolved notices" value="6" detail="Previously handled or auto-cleared alerts." tone="emerald" />
+        <StatCard icon={Bell} label="Open notices" value={formatNumber(notices.length)} detail="Suspicious or restricted events that may need your attention." tone="amber" />
+        <StatCard icon={ShieldAlert} label="Account warnings" value={formatNumber(notices.filter((activity) => activity.activity_type.includes("login")).length)} detail="Login-related events tied to your profile." tone="rose" />
+        <StatCard icon={ShieldCheck} label="Normal events" value={formatNumber(resolvedNotices.length)} detail="Tracked events that completed successfully." tone="emerald" />
       </div>
 
-      <Panel
-        title="Alert history"
-        description="These notices are informational unless the admin team marks them as escalated."
-      >
-        <DataTable
-          columns={[
-            { key: "alert", label: "Alert" },
-            { key: "source", label: "Source" },
-            { key: "time", label: "Time" },
-            { key: "status", label: "Status" },
-          ]}
-          rows={[
-            {
-              alert: "Repeated failed login attempts detected",
-              source: "Student Portal Sign-in",
-              time: "Today, 07:51 AM",
-              status: <Badge tone="amber">Needs review</Badge>,
-            },
-            {
-              alert: "New device linked to account",
-              source: "Campus Wi-Fi Registration",
-              time: "Yesterday, 06:12 PM",
-              status: <Badge tone="sky">Confirmed</Badge>,
-            },
-            {
-              alert: "Password updated successfully",
-              source: "Identity Service",
-              time: "May 10, 2026",
-              status: <Badge tone="emerald">Resolved</Badge>,
-            },
-          ]}
-        />
+      <Panel title="Notice history" description="These notices come from your monitored network activity rather than the admin-only incident queue.">
+        {isLoading ? (
+          <EmptyState title="Loading notices" description="Preparing the latest student-facing security notices." />
+        ) : notices.length ? (
+          <DataTable
+            columns={[
+              { key: "alert", label: "Notice" },
+              { key: "source", label: "Source" },
+              { key: "time", label: "Time" },
+              { key: "status", label: "Status" },
+            ]}
+            rows={notices.map((activity) => ({
+              alert: activity.description,
+              source: activity.device_name || activity.destination || activity.ip_address,
+              time: formatDateTime(activity.timestamp),
+              status: <Badge tone={statusTone(activity.outcome)}>{activity.outcome}</Badge>,
+            }))}
+          />
+        ) : (
+          <EmptyState title="No active notices" description="There are no suspicious or restricted events associated with your account right now." />
+        )}
       </Panel>
 
-      <Panel
-        title="What you should do"
-        description="Recommended student actions for safe network usage."
-      >
+      <Panel title="What you should do" description="Recommended user actions for safe network usage.">
         <div className="grid gap-4 md:grid-cols-3">
           {[
             {
