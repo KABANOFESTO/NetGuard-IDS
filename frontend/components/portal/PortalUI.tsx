@@ -212,9 +212,13 @@ export function DataTable({ columns, rows }: DataTableProps) {
 export function ActionButton({
   children,
   tone = "dark",
+  onClick,
+  disabled = false,
 }: {
   children: ReactNode;
   tone?: "dark" | "light";
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
   const styles =
     tone === "dark"
@@ -224,9 +228,26 @@ export function ActionButton({
   return (
     <button
       type="button"
-      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${styles}`}
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${styles}`}
     >
       {children}
     </button>
+  );
+}
+
+export function EmptyState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+      <p className="mt-2 text-sm leading-7 text-slate-600">{description}</p>
+    </div>
   );
 }
