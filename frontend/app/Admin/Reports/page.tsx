@@ -1,60 +1,77 @@
+"use client";
+
 import { ClipboardList, FileBarChart, ShieldCheck, TrendingUp } from "lucide-react";
-import { Badge, InfoList, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
+import { useState } from "react";
+
+import { Badge, EmptyState, InfoList, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
+import { useGetAuditLogsQuery } from "@/lib/redux/slices/AuditLogSlice";
+import { useGetMonitoringReportQuery } from "@/lib/redux/slices/MonitoringSlice";
+import { formatDataUsage, formatNumber } from "@/lib/portal/formatters";
 
 export default function AdminReportsPage() {
+  const [days, setDays] = useState(7);
+  const { data: report } = useGetMonitoringReportQuery(days);
+  const { data: auditLogs = [] } = useGetAuditLogsQuery({ ordering: "-timestamp" });
+
   return (
     <div className="space-y-6 bg-slate-50 px-4 py-6 md:px-6 lg:px-8">
       <PageHeader
         eyebrow="Reporting"
         title="Turn monitoring data into usable operational and security reports."
-        description="Reporting is part of NetGuard’s logging and audit value. These summaries help the university review intrusions, user behavior, device status, and response trends."
+        description="Reporting helps the university review intrusions, user behavior, response actions, and long-term network patterns in a way that supports both security and operations."
       />
 
+      <div className="flex gap-2">
+        {[7, 14, 30].map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setDays(value)}
+            className={`rounded-full px-4 py-2 text-sm font-medium ${
+              days === value ? "bg-slate-900 text-white" : "border border-slate-200 bg-white text-slate-700"
+            }`}
+          >
+            Last {value} days
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={ClipboardList} label="Reports generated" value="28" detail="Security and activity reports prepared this month." tone="sky" />
-        <StatCard icon={FileBarChart} label="Intrusion reports" value="9" detail="Focused on suspicious access incidents." tone="rose" />
-        <StatCard icon={ShieldCheck} label="Compliance logs" value="100%" detail="Detection, alert, and response actions are recorded." tone="emerald" />
-        <StatCard icon={TrendingUp} label="Trend direction" value="-18%" detail="Critical incidents reduced compared with last month." tone="violet" />
+        <StatCard icon={ClipboardList} label="Tracked activities" value={formatNumber(report?.activity_summary.total_activities)} detail={`Suspicious activities: ${formatNumber(report?.activity_summary.suspicious_activities)}.`} tone="sky" />
+        <StatCard icon={FileBarChart} label="Intrusion alerts" value={formatNumber(report?.alert_summary.total_alerts)} detail={`Resolved: ${formatNumber(report?.alert_summary.resolved_alerts)}.`} tone="rose" />
+        <StatCard icon={ShieldCheck} label="Audit records" value={formatNumber(auditLogs.length)} detail="Security, user, dashboard, and reporting actions logged." tone="emerald" />
+        <StatCard icon={TrendingUp} label="Traffic volume" value={formatDataUsage(report?.activity_summary.total_data_usage_mb)} detail={`Reporting window: ${days} days.`} tone="violet" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Available report sets" description="The kinds of reporting the IT team can review regularly.">
-          <InfoList
-            rows={[
-              {
-                label: "Intrusion summary",
-                value: "Suspicious access report",
-                detail: "Failed logins, unknown devices, restricted-service attempts, and escalations.",
-                badge: <Badge tone="rose">Security</Badge>,
-              },
-              {
-                label: "User activity",
-                value: "Role-based access log",
-                detail: "User logins, active sessions, and usage patterns across academic and guest segments.",
-                badge: <Badge tone="sky">Operations</Badge>,
-              },
-              {
-                label: "Response review",
-                value: "Containment and action history",
-                detail: "Blocks, restrictions, investigations, and admin interventions.",
-                badge: <Badge tone="emerald">Audit</Badge>,
-              },
-            ]}
-          />
+        <Panel title="Top active users" description="Accounts with the most monitored network activity in the selected period.">
+          {report?.top_users.length ? (
+            <InfoList
+              rows={report.top_users.map((user) => ({
+                label: `User #${user.user__id}`,
+                value: user.user__email,
+                detail: `${formatNumber(user.total)} recorded activities`,
+                badge: <Badge tone="sky">Observed</Badge>,
+              }))}
+            />
+          ) : (
+            <EmptyState title="No user activity yet" description="There is not enough activity data to build a ranked user report." />
+          )}
         </Panel>
 
-        <Panel title="Why reporting matters" description="Reports make the system usable in real university operations.">
-          <div className="space-y-3">
-            {[
-              "Helps the IT team demonstrate that threats were detected and handled.",
-              "Provides evidence when reviewing misuse, unauthorized access, or abnormal sessions.",
-              "Supports future scaling decisions by showing where the network is under the most stress.",
-            ].map((item) => (
-              <div key={item} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-700">
-                {item}
-              </div>
-            ))}
-          </div>
+        <Panel title="Top active devices" description="Devices with the most activity in the selected reporting period.">
+          {report?.top_devices.length ? (
+            <InfoList
+              rows={report.top_devices.map((device) => ({
+                label: `Device #${device.device__id}`,
+                value: device.device__device_name,
+                detail: `${formatNumber(device.total)} recorded activities`,
+                badge: <Badge tone="emerald">Tracked</Badge>,
+              }))}
+            />
+          ) : (
+            <EmptyState title="No device activity yet" description="There is not enough device activity data to build a ranked device report." />
+          )}
         </Panel>
       </div>
     </div>

@@ -1,51 +1,89 @@
+"use client";
+
 import { Laptop, Monitor, ShieldCheck, Smartphone } from "lucide-react";
-import { Badge, DataTable, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
+import { toast } from "sonner";
+
+import { Badge, DataTable, EmptyState, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
+import {
+  useBlockDeviceMutation,
+  useGetDevicesQuery,
+  useGetDeviceSummaryQuery,
+} from "@/lib/redux/slices/DeviceSlice";
+import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatters";
 
 export default function AdminDevicesPage() {
+  const { data: summary } = useGetDeviceSummaryQuery();
+  const { data: devices = [], isLoading } = useGetDevicesQuery();
+  const [blockDevice, { isLoading: blocking }] = useBlockDeviceMutation();
+
+  const handleBlock = async (deviceId: number) => {
+    try {
+      const response = await blockDevice({ id: deviceId, reason: "manual_block" }).unwrap();
+      toast.success(response.message);
+    } catch (error: any) {
+      toast.error(error?.data?.error ?? "Unable to block device.");
+    }
+  };
+
   return (
     <div className="space-y-6 bg-slate-50 px-4 py-6 md:px-6 lg:px-8">
       <PageHeader
         eyebrow="Device Control"
-        title="Track registered devices, identify unknown endpoints, and review trust state."
-        description="Device identification is a core NetGuard feature. This view helps the IT team compare IP and MAC identity, see trust status, and react when a device is unknown."
+        title="Track registered endpoints, spot unknown devices, and enforce trust state."
+        description="Device identification is a core NetGuard feature. This view lets the IT team compare IP and MAC identity, see whether a device is registered, and take response action when something looks wrong."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Monitor} label="Known devices" value="7,314" detail="Devices currently registered in system records." tone="emerald" />
-        <StatCard icon={ShieldCheck} label="Trusted now" value="7,201" detail="Devices actively recognized and allowed." tone="sky" />
-        <StatCard icon={Laptop} label="Under review" value="41" detail="Devices pending validation or recent change checks." tone="amber" />
-        <StatCard icon={Smartphone} label="Unknown seen today" value="9" detail="Unregistered endpoints detected on monitored segments." tone="rose" />
+        <StatCard icon={Monitor} label="Known devices" value={formatNumber(summary?.total_devices)} detail="Devices currently stored in the university inventory." tone="emerald" />
+        <StatCard icon={ShieldCheck} label="Trusted now" value={formatNumber(summary?.active_devices)} detail="Active devices that are not blocked or suspicious." tone="sky" />
+        <StatCard icon={Laptop} label="Under review" value={formatNumber(summary?.suspicious_devices)} detail="Devices marked suspicious because of monitoring rules." tone="amber" />
+        <StatCard icon={Smartphone} label="Unknown or unregistered" value={formatNumber((summary?.unknown_devices ?? 0) + (summary?.unregistered_devices ?? 0))} detail="Endpoints that need identity validation." tone="rose" />
       </div>
 
-      <Panel title="Device inventory" description="Current device view across important network segments.">
-        <DataTable
-          columns={[
-            { key: "device", label: "Device" },
-            { key: "owner", label: "Owner" },
-            { key: "identity", label: "IP / MAC" },
-            { key: "status", label: "Status" },
-          ]}
-          rows={[
-            {
-              device: "Dell OptiPlex 7000",
-              owner: "Admin Office Workstation",
-              identity: "10.1.4.21 | 8C:8D:28:17:1A:22",
-              status: <Badge tone="emerald">Trusted</Badge>,
-            },
-            {
-              device: "Unknown Android Device",
-              owner: "Unassigned",
-              identity: "10.24.18.61 | D4:6A:6A:91:CC:10",
-              status: <Badge tone="rose">Unknown</Badge>,
-            },
-            {
-              device: "HP EliteBook 840",
-              owner: "Lecturer Account",
-              identity: "10.12.3.40 | 74:E5:F9:6D:3B:88",
-              status: <Badge tone="amber">Review</Badge>,
-            },
-          ]}
-        />
+      <Panel title="Device inventory" description="Live inventory of network-connected devices and their latest trust state.">
+        {isLoading ? (
+          <EmptyState title="Loading devices" description="Fetching the current device inventory from the backend." />
+        ) : devices.length ? (
+          <DataTable
+            columns={[
+              { key: "device", label: "Device" },
+              { key: "owner", label: "Owner" },
+              { key: "identity", label: "IP / MAC" },
+              { key: "status", label: "Status" },
+              { key: "last_seen", label: "Last seen" },
+              { key: "action", label: "Action" },
+            ]}
+            rows={devices.map((device) => ({
+              device: (
+                <div>
+                  <p className="font-medium text-slate-900">{device.device_name}</p>
+                  <p className="text-xs text-slate-500">{device.device_type} {device.operating_system ? `• ${device.operating_system}` : ""}</p>
+                </div>
+              ),
+              owner: device.owner_name || device.owner_email || "Unassigned",
+              identity: (
+                <div>
+                  <p>{device.ip_address}</p>
+                  <p className="text-xs text-slate-500">{device.mac_address}</p>
+                </div>
+              ),
+              status: <Badge tone={statusTone(device.status)}>{device.status}</Badge>,
+              last_seen: formatDateTime(device.last_seen),
+              action: (
+                <button
+                  type="button"
+                  disabled={blocking || device.status === "blocked"}
+                  onClick={() => handleBlock(device.id)}
+                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {device.status === "blocked" ? "Blocked" : "Block"}
+                </button>
+              ),
+            }))}
+          />
+        ) : (
+          <EmptyState title="No devices available" description="There are no registered devices in the system yet." />
+        )}
       </Panel>
     </div>
   );

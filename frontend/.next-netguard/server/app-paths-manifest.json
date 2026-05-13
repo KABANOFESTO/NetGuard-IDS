@@ -1,5 +1,4 @@
 {
-  "/Admin/Network-Monitoring/page": "app/Admin/Network-Monitoring/page.js",
   "/Admin/Devices/page": "app/Admin/Devices/page.js",
   "/Admin/Users/page": "app/Admin/Users/page.js",
   "/guest/(dashboard)/page": "app/guest/(dashboard)/page.js",
