@@ -16,6 +16,12 @@ class DeviceListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Device.objects.all().select_related("owner")
 
+    def _get_request_ip(self):
+        x_forwarded_for = self.request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            return x_forwarded_for.split(",")[0].strip()
+        return self.request.META.get("REMOTE_ADDR") or "127.0.0.1"
+
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
@@ -32,12 +38,31 @@ class DeviceListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         owner = serializer.validated_data.get("owner") if self.request.user.role == "Admin" else self.request.user
-        device = serializer.save(owner=owner)
+        ip_address = serializer.validated_data.get("ip_address") or self._get_request_ip()
+        device, created = Device.objects.update_or_create(
+            mac_address=serializer.validated_data["mac_address"],
+            defaults={
+                "owner": owner,
+                "device_name": serializer.validated_data["device_name"],
+                "device_type": serializer.validated_data.get("device_type", "other"),
+                "ip_address": ip_address,
+                "operating_system": serializer.validated_data.get("operating_system"),
+                "registration_notes": serializer.validated_data.get("registration_notes", ""),
+                "is_registered": serializer.validated_data.get("is_registered", True),
+                "status": "active",
+                "blocked_at": None,
+            },
+        )
+        serializer.instance = device
         log_action(
             self.request,
-            "DEVICE_REGISTER",
+            "DEVICE_REGISTER" if created else "DEVICE_UPDATE",
             target_user=owner,
-            additional_data={"device_id": device.id, "mac_address": device.mac_address},
+            additional_data={
+                "device_id": device.id,
+                "mac_address": device.mac_address,
+                "auto_upsert": not created,
+            },
         )
 
 

@@ -26,3 +26,6 @@ class NetworkActivitySerializer(serializers.ModelSerializer):
             "timestamp",
         ]
         read_only_fields = ["is_suspicious", "timestamp"]
+        extra_kwargs = {
+            "ip_address": {"required": False},
+        }

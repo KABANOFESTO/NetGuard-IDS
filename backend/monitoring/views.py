@@ -22,6 +22,12 @@ class NetworkActivityListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = NetworkActivity.objects.all().select_related("user", "device")
 
+    def _get_request_ip(self):
+        x_forwarded_for = self.request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            return x_forwarded_for.split(",")[0].strip()
+        return self.request.META.get("REMOTE_ADDR") or "127.0.0.1"
+
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
@@ -46,7 +52,7 @@ class NetworkActivityListCreateView(generics.ListCreateAPIView):
             device=serializer.validated_data.get("device"),
             activity_type=serializer.validated_data["activity_type"],
             description=serializer.validated_data["description"],
-            ip_address=serializer.validated_data["ip_address"],
+            ip_address=serializer.validated_data.get("ip_address") or self._get_request_ip(),
             outcome=serializer.validated_data.get("outcome", "success"),
             data_usage_mb=serializer.validated_data.get("data_usage_mb", 0),
             destination=serializer.validated_data.get("destination", ""),

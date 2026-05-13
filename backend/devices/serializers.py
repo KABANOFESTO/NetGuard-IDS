@@ -27,6 +27,10 @@ class DeviceSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["status", "blocked_at", "last_seen", "created_at"]
+        extra_kwargs = {
+            "ip_address": {"required": False},
+            "mac_address": {"validators": []},
+        }
 
 
 class DeviceStatusSerializer(serializers.ModelSerializer):

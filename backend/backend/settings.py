@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 from datetime import timedelta
+from corsheaders.defaults import default_headers
 
 try:
     from decouple import Csv, config
@@ -93,7 +94,7 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "authapi.authentication.DeviceAwareJWTAuthentication",
     ),
 }
 
@@ -138,6 +139,11 @@ CORS_ALLOWED_ORIGINS = config(
     default="http://localhost:3000,http://127.0.0.1:3000",
     cast=Csv(),
 )
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-device-id",
+    "x-device-mac",
+]
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -229,3 +235,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = "authapi.User"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+INITIAL_ADMIN_BOOTSTRAP_SECRET = config("INITIAL_ADMIN_BOOTSTRAP_SECRET", default="")
