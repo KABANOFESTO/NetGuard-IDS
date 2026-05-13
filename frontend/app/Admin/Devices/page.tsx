@@ -9,12 +9,24 @@ import {
   useGetDevicesQuery,
   useGetDeviceSummaryQuery,
 } from "@/lib/redux/slices/DeviceSlice";
+import {
+  useGetSecurityBlocksQuery,
+  useUnblockSecurityBlockMutation,
+} from "@/lib/redux/slices/SecuritySlice";
 import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatters";
 
 export default function AdminDevicesPage() {
   const { data: summary } = useGetDeviceSummaryQuery();
   const { data: devices = [], isLoading } = useGetDevicesQuery();
+  const { data: activeBlocks = [] } = useGetSecurityBlocksQuery(true);
   const [blockDevice, { isLoading: blocking }] = useBlockDeviceMutation();
+  const [unblockSecurityBlock, { isLoading: unblocking }] = useUnblockSecurityBlockMutation();
+
+  const activeBlockByDeviceId = new Map(
+    activeBlocks
+      .filter((block) => block.device && block.is_active)
+      .map((block) => [block.device as number, block])
+  );
 
   const handleBlock = async (deviceId: number) => {
     try {
@@ -22,6 +34,21 @@ export default function AdminDevicesPage() {
       toast.success(response.message);
     } catch (error: any) {
       toast.error(error?.data?.error ?? "Unable to block device.");
+    }
+  };
+
+  const handleUnblock = async (deviceId: number) => {
+    const activeBlock = activeBlockByDeviceId.get(deviceId);
+    if (!activeBlock) {
+      toast.error("No active block record was found for this device.");
+      return;
+    }
+
+    try {
+      const response = await unblockSecurityBlock(activeBlock.id).unwrap();
+      toast.success(response.message);
+    } catch (error: any) {
+      toast.error(error?.data?.error ?? "Unable to unblock device.");
     }
   };
 
@@ -70,14 +97,25 @@ export default function AdminDevicesPage() {
               status: <Badge tone={statusTone(device.status)}>{device.status}</Badge>,
               last_seen: formatDateTime(device.last_seen),
               action: (
-                <button
-                  type="button"
-                  disabled={blocking || device.status === "blocked"}
-                  onClick={() => handleBlock(device.id)}
-                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {device.status === "blocked" ? "Blocked" : "Block"}
-                </button>
+                device.status === "blocked" ? (
+                  <button
+                    type="button"
+                    disabled={unblocking}
+                    onClick={() => handleUnblock(device.id)}
+                    className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Unblock
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={blocking}
+                    onClick={() => handleBlock(device.id)}
+                    className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Block
+                  </button>
+                )
               ),
             }))}
           />

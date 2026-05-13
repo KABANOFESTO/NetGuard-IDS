@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, LockKeyhole, Mail, Shield, Wifi } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  consumeAuthNotice,
   getAccessToken,
   getDashboardPathForRole,
   getStoredUser,
   persistAuthSession,
 } from "@/lib/auth/session";
+import { getClientDeviceIdentity, getStoredDeviceId } from "@/lib/device/clientDevice";
 import { useLoginMutation } from "@/lib/redux/slices/AuthSlice";
 
 export default function LoginPage() {
@@ -27,20 +29,54 @@ export default function LoginPage() {
     }
   }, [router]);
 
+  useEffect(() => {
+    const notice = consumeAuthNotice();
+    if (notice) {
+      toast.error(notice);
+    }
+  }, []);
+
+  const getLoginErrorMessage = (error: unknown) => {
+    if (!error || typeof error !== "object") {
+      return "Unable to sign in. Please check your credentials and try again.";
+    }
+
+    const apiError = error as {
+      data?: {
+        error?: string;
+        detail?: string;
+        message?: string;
+      };
+      error?: string;
+      status?: number | string;
+    };
+
+    return (
+      apiError.data?.error ||
+      apiError.data?.detail ||
+      apiError.data?.message ||
+      apiError.error ||
+      "Unable to sign in. Please check your credentials and try again."
+    );
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     try {
-      const response = await login({ email, password }).unwrap();
+      const deviceIdentity = getClientDeviceIdentity();
+      const storedDeviceId = getStoredDeviceId() ?? undefined;
+      const response = await login({
+        email,
+        password,
+        device_id: storedDeviceId,
+        mac_address: deviceIdentity.macAddress,
+      }).unwrap();
       persistAuthSession(response);
       toast.success(`Welcome back, ${response.user.username}.`);
       router.push(getDashboardPathForRole(response.user.role));
-    } catch (error: any) {
-      const message =
-        error?.data?.error ??
-        error?.data?.detail ??
-        "Unable to sign in. Please check your credentials and try again.";
-      toast.error(message);
+    } catch (error: unknown) {
+      toast.error(getLoginErrorMessage(error));
     }
   };
 
@@ -51,7 +87,7 @@ export default function LoginPage() {
 
       <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
         <section className="hidden px-10 py-12 lg:flex lg:flex-col lg:justify-between">
-          <div>
+          <div style={{ textAlign: "center", height: "100%" }} className="flex flex-col items-center justify-center gap-6">
             <Link href="/" className="inline-flex items-center gap-3 text-white">
               <div className="rounded-2xl bg-sky-500/20 p-3 text-sky-200">
                 <Shield className="h-6 w-6" />
@@ -61,37 +97,6 @@ export default function LoginPage() {
                 <h1 className="mt-1 text-2xl font-semibold">University Network Defense</h1>
               </div>
             </Link>
-          </div>
-
-          <div className="max-w-xl">
-            <p className="text-sm uppercase tracking-[0.24em] text-sky-200">Secure access</p>
-            <h2 className="mt-5 text-5xl font-semibold leading-tight text-white">
-              Real-time monitoring, intrusion detection, and guided response for campus networks.
-            </h2>
-            <p className="mt-6 text-base leading-8 text-slate-200">
-              Sign in to monitor users, review devices, investigate suspicious behavior, or manage your own network footprint based on your role.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {[
-              {
-                icon: Wifi,
-                title: "Monitor access",
-                text: "Track live sessions, logins, and device activity across the university network.",
-              },
-              {
-                icon: Shield,
-                title: "Detect threats",
-                text: "Surface suspicious usage, repeated failed logins, and unknown devices early.",
-              },
-            ].map(({ icon: Icon, title, text }) => (
-              <div key={title} className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur">
-                <Icon className="h-5 w-5 text-sky-200" />
-                <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-300">{text}</p>
-              </div>
-            ))}
           </div>
         </section>
 

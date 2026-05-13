@@ -2,11 +2,13 @@
 import Navbar from "@/components/admin/Navbar";
 import AdminSideBar from "@/components/admin/Sidebar";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
+import { usePortalTelemetry } from "@/hooks/usePortalTelemetry";
 
 export default function RootLayout({
     children,
 }: Readonly<{ children: React.ReactNode }>) {
     const { isAuthorized, isLoading } = useRoleGuard(["Admin"]);
+    usePortalTelemetry();
 
     if (isLoading || !isAuthorized) {
         return (

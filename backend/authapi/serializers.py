@@ -8,6 +8,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email', 'password', 'role', 'is_active')
 
+    def validate_role(self, value):
+        if value == "Admin":
+            raise serializers.ValidationError(
+                "Admin accounts cannot be created through public signup. Ask an existing administrator to create the account."
+            )
+        return value
+
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -39,6 +46,28 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
        
         user.temporary_password = password
         return user
+
+
+class InitialAdminBootstrapSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password', 'role')
+
+    def validate_role(self, value):
+        if value != "Admin":
+            raise serializers.ValidationError("Initial bootstrap can only create an Admin account.")
+        return value
+
+    def create(self, validated_data):
+        return User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            role='Admin',
+            is_active=True,
+        )
 
 class UserSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()

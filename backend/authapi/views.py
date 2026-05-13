@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
-from .serializers import RegisterSerializer, UserSerializer, ProfileUpdateSerializer, AdminUserCreateSerializer
+from .serializers import RegisterSerializer, UserSerializer, ProfileUpdateSerializer, AdminUserCreateSerializer, InitialAdminBootstrapSerializer
 from .permissions import IsAdmin, IsAdminOrInvestigator, IsAdminOrInvestigatorOrPolice, IsPolice, IsInvestigator
 from AuditLog.audit_log_utils import log_action 
 from devices.models import Device
@@ -109,6 +109,66 @@ class AdminUserCreateView(generics.CreateAPIView):
         )
 
 
+class InitialAdminBootstrapView(generics.CreateAPIView):
+    serializer_class = InitialAdminBootstrapSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def _is_local_request(self, request):
+        remote_addr = request.META.get("REMOTE_ADDR", "")
+        forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        forwarded_ip = forwarded_for.split(",")[0].strip() if forwarded_for else ""
+        allowed_local_hosts = {"127.0.0.1", "::1", "localhost"}
+        return remote_addr in allowed_local_hosts or forwarded_ip in allowed_local_hosts
+
+    def create(self, request, *args, **kwargs):
+        configured_secret = getattr(settings, "INITIAL_ADMIN_BOOTSTRAP_SECRET", "")
+        provided_secret = request.headers.get("X-Initial-Admin-Secret") or request.data.get("bootstrap_secret")
+        is_local_debug_bootstrap = settings.DEBUG and self._is_local_request(request)
+
+        if User.objects.filter(role="Admin").exists():
+            return Response(
+                {"error": "An admin account already exists. Use the authenticated admin creation endpoint instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if configured_secret:
+            if provided_secret != configured_secret:
+                return Response(
+                    {"error": "Invalid bootstrap secret."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        elif not is_local_debug_bootstrap:
+            return Response(
+                {
+                    "error": (
+                        "Initial admin bootstrap is only available without a secret in local DEBUG mode. "
+                        "Configure INITIAL_ADMIN_BOOTSTRAP_SECRET for other environments."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        log_action(
+            request,
+            'USER_CREATE',
+            target_user=user,
+            additional_data={'registration_method': 'initial_admin_bootstrap'}
+        )
+
+        return Response(
+            {
+                "message": "Initial admin account created successfully.",
+                "user": UserSerializer(user, context={"request": request}).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class MyTokenObtainView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -142,6 +202,22 @@ class MyTokenObtainView(APIView):
         user = authenticate(username=email, password=password)
         
         if user:
+            if device and device.owner_id == user.id and device.status == "blocked":
+                create_network_activity(
+                    request=request,
+                    user=user,
+                    device=device,
+                    activity_type="restricted_access",
+                    description="Blocked device attempted to sign in.",
+                    ip_address=ip_address,
+                    outcome="blocked",
+                    metadata={"reason": "device_blocked"},
+                    is_suspicious=True,
+                )
+                return Response(
+                    {"error": "This device has been blocked by the administrator."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
             if user.is_active:
                 refresh = RefreshToken.for_user(user)
                 create_network_activity(

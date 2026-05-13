@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useSendContactMessageMutation } from '@/lib/redux/slices/ContactMessageSlice';
-import { ArrowRight, User, Mail, Phone, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, User, Mail, CheckCircle2 } from 'lucide-react';
 
 const ContactForm: React.FC = () => {
     const [formData, setFormData] = useState({
@@ -48,6 +48,7 @@ const ContactForm: React.FC = () => {
                 setFormData({ name: '', email: '', phone: '', message: '', agreeToPrivacy: false });
                 setCharCount(0);
             }, 3000);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
             alert("Failed to send message. Please try again later.");
         }
@@ -71,13 +72,13 @@ const ContactForm: React.FC = () => {
                             </div>
 
                             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
-                                Let's Get In Touch.
+                                Let&apos;s Get In Touch.
                             </h1>
 
                             <div className="flex items-baseline gap-2 text-lg text-slate-400">
                                 <span>Or just reach out manually to</span>
-                                <a href="mailto:ae2c@ae2c.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">
-                                    ae2c@ae2c.com
+                                <a href="mailto:netguard@netguard.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">
+                                    netguard@netguard.com
                                 </a>
                                 <span>.</span>
                             </div>
@@ -91,7 +92,7 @@ const ContactForm: React.FC = () => {
                                         <CheckCircle2 className="w-10 h-10 text-green-400" />
                                     </div>
                                     <h3 className="text-3xl font-bold text-white mb-3">Thank You!</h3>
-                                    <p className="text-slate-400 text-lg">We've received your message and will get back to you shortly.</p>
+                                    <p className="text-slate-400 text-lg">We&apos;ve received your message and will get back to you shortly.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-6">

@@ -2,11 +2,13 @@
 import Navbar from "@/components/guest/Navbar";
 import SideBar from "@/components/guest/Sidebar";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
+import { usePortalTelemetry } from "@/hooks/usePortalTelemetry";
 
 export default function RootLayout({
     children,
 }: Readonly<{ children: React.ReactNode }>) {
     const { isAuthorized, isLoading } = useRoleGuard(["Guest"]);
+    usePortalTelemetry();
 
     if (isLoading || !isAuthorized) {
         return (

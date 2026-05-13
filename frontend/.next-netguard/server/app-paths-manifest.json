@@ -1,7 +1,8 @@
 {
   "/auth/(login)/page": "app/auth/(login)/page.js",
-  "/student/(dashboard)/page": "app/student/(dashboard)/page.js",
   "/student/my-devices/page": "app/student/my-devices/page.js",
-  "/student/Profile-settings/page": "app/student/Profile-settings/page.js",
+  "/auth/signup/page": "app/auth/signup/page.js",
+  "/student/my-activity/page": "app/student/my-activity/page.js",
+  "/Admin/Devices/page": "app/Admin/Devices/page.js",
   "/student/alerts/page": "app/student/alerts/page.js"
 }

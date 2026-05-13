@@ -42,9 +42,9 @@ export default function SignupPage() {
         typeof payload === "string"
           ? payload
           : payload?.email?.[0] ??
-            payload?.password?.[0] ??
-            payload?.detail ??
-            "Unable to create your account right now.";
+          payload?.password?.[0] ??
+          payload?.detail ??
+          "Unable to create your account right now.";
       toast.error(message);
     }
   };
@@ -55,49 +55,6 @@ export default function SignupPage() {
       <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:72px_72px]" />
 
       <div className="relative z-10 grid min-h-screen lg:grid-cols-[1fr_1fr]">
-        <section className="hidden px-10 py-12 lg:flex lg:flex-col lg:justify-between">
-          <Link href="/" className="inline-flex items-center gap-3 text-white">
-            <div className="rounded-2xl bg-emerald-500/20 p-3 text-emerald-200">
-              <Shield className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-emerald-200">NetGuard Access</p>
-              <h1 className="mt-1 text-2xl font-semibold">Create a monitored account</h1>
-            </div>
-          </Link>
-
-          <div className="max-w-xl">
-            <p className="text-sm uppercase tracking-[0.24em] text-emerald-200">Role-aware onboarding</p>
-            <h2 className="mt-5 text-5xl font-semibold leading-tight text-white">
-              Register for safe university access with the role that fits how you use the network.
-            </h2>
-            <p className="mt-6 text-base leading-8 text-slate-200">
-              Students and lecturers get monitored academic access. Guests receive time-bound restricted connectivity. Admin accounts remain controlled separately by IT staff.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {[
-              {
-                icon: Wifi,
-                title: "Safer onboarding",
-                text: "Every account is tied to a role so monitoring and access control make sense from day one.",
-              },
-              {
-                icon: User2,
-                title: "Clear permissions",
-                text: "Students, lecturers, and guests each land in a portal designed for their allowed visibility.",
-              },
-            ].map(({ icon: Icon, title, text }) => (
-              <div key={title} className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur">
-                <Icon className="h-5 w-5 text-emerald-200" />
-                <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-300">{text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
         <section className="flex items-center justify-center px-4 py-10 sm:px-6">
           <div className="w-full max-w-xl rounded-[32px] border border-white/10 bg-white/95 p-7 shadow-2xl shadow-black/20 backdrop-blur md:p-10">
             <div className="mb-8">
@@ -207,6 +164,19 @@ export default function SignupPage() {
                 .
               </p>
             </div>
+          </div>
+        </section>
+        <section className="hidden px-10 py-12 lg:flex lg:flex-col lg:justify-between">
+          <div style={{ textAlign: "center", height: "100%" }} className="flex flex-col items-center justify-center gap-6">
+            <Link href="/" className="inline-flex items-center gap-3 text-white">
+              <div className="rounded-2xl bg-sky-500/20 p-3 text-sky-200">
+                <Shield className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-sky-200">NetGuard</p>
+                <h1 className="mt-1 text-2xl font-semibold">University Network Defense</h1>
+              </div>
+            </Link>
           </div>
         </section>
       </div>
