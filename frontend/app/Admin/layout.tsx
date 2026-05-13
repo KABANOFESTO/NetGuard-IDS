@@ -20,9 +20,9 @@ export default function RootLayout({
 
 
     return (
-        <div className="flex flex-row w-full min-h-screen lg:w-[90%] bg-none">
+        <div className="flex flex-row w-full min-h-screen lg:w-[100%] bg-none">
             <AdminSideBar />
-            <div className="flex flex-col ml-auto w-full lg:w-[78%]">
+            <div className="flex flex-col ml-auto w-full lg:w-[85%]">
                 <Navbar onSearch={(query: string) => { /* handle search here */ }} />
                 {children}
             </div>
