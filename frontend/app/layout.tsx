@@ -1,5 +1,4 @@
 "use client";
-import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import { Provider } from "react-redux";
 import { store } from "@/lib/redux/store";
@@ -25,12 +24,10 @@ export default function RootLayout({
             "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, \"Apple Color Emoji\", \"Segoe UI Emoji\"",
         }}
       >
-        <SessionProvider>
-          <Provider store={store}>
-            <Toaster position={`top-right`} />
-            <main className="flex-grow">{children}</main>
-          </Provider>
-        </SessionProvider>
+        <Provider store={store}>
+          <Toaster position={`top-right`} />
+          <main className="flex-grow">{children}</main>
+        </Provider>
       </body>
     </html>
   );

@@ -6,76 +6,41 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/(landingpage)/layout": [
+    "/auth/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/(landingpage)/layout.css",
-      "static/chunks/app/(landingpage)/layout.js"
+      "static/css/app/auth/layout.css",
+      "static/chunks/app/auth/layout.js"
     ],
-    "/(landingpage)/page": [
+    "/auth/(login)/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(landingpage)/page.js"
-    ],
-    "/Admin/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Admin/layout.js"
-    ],
-    "/Admin/(dashboard)/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Admin/(dashboard)/page.js"
-    ],
-    "/Admin/Network-Monitoring/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Admin/Network-Monitoring/page.js"
-    ],
-    "/Admin/Alerts/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Admin/Alerts/page.js"
-    ],
-    "/Admin/Devices/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Admin/Devices/page.js"
-    ],
-    "/Admin/Users/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Admin/Users/page.js"
-    ],
-    "/Admin/Reports/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Admin/Reports/page.js"
-    ],
-    "/guest/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/guest/layout.js"
+      "static/chunks/app/auth/(login)/page.js"
     ],
     "/student/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/student/layout.js"
     ],
-    "/student/Profile-settings/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/student/Profile-settings/page.js"
-    ],
     "/student/(dashboard)/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/student/(dashboard)/page.js"
     ],
-    "/guest/(dashboard)/page": [
+    "/student/my-devices/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/guest/(dashboard)/page.js"
+      "static/chunks/app/student/my-devices/page.js"
+    ],
+    "/student/Profile-settings/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/student/Profile-settings/page.js"
+    ],
+    "/student/alerts/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/student/alerts/page.js"
     ]
   }
 }

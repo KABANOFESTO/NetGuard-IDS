@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BellRing, Cpu, ShieldCheck } from "lucide-react";
 
-const stats = [
-  { value: "5,000+", label: "concurrent campus users monitored" },
-  { value: "<2s", label: "alert visibility target for IT staff" },
-  { value: "24/7", label: "continuous monitoring availability" },
-];
 
 const pillars = [
   {
@@ -28,11 +23,6 @@ const pillars = [
   },
 ];
 
-const threatLanes = [
-  ["Brute-force login attempts", "High", "bg-rose-400/85"],
-  ["Unknown guest device registration", "Medium", "bg-amber-400/85"],
-  ["Restricted lab access after hours", "Critical", "bg-emerald-400/85"],
-] as const;
 
 export default function HeroSection() {
   return (
@@ -49,10 +39,10 @@ export default function HeroSection() {
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <Link
-                href="#features"
+                href="/auth"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#22c55e,#0ea5e9)] px-6 py-3.5 text-sm font-semibold text-slate-950 shadow-[0_18px_50px_rgba(14,165,233,0.18)] transition-transform duration-300 hover:-translate-y-0.5"
               >
-                Explore features
+                Explore More
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link

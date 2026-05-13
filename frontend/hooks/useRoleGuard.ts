@@ -9,22 +9,28 @@ import { clearAuthSession, getAccessToken, getDashboardPathForRole } from "@/lib
 
 export function useRoleGuard(allowedRoles: UserRole[]) {
   const router = useRouter();
+  const [isInitialized, setIsInitialized] = useState(false);
   const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
     setHasToken(Boolean(getAccessToken()));
+    setIsInitialized(true);
   }, []);
 
   const query = useGetMyDetailsQuery(
     hasToken ? {} : undefined,
-    { skip: !hasToken }
+    { skip: !isInitialized || !hasToken }
   );
 
   useEffect(() => {
+    if (!isInitialized) {
+      return;
+    }
+
     if (!hasToken) {
       router.replace("/auth");
     }
-  }, [hasToken, router]);
+  }, [hasToken, isInitialized, router]);
 
   useEffect(() => {
     if (!query.isSuccess) {
@@ -47,6 +53,7 @@ export function useRoleGuard(allowedRoles: UserRole[]) {
 
   return {
     ...query,
+    isLoading: !isInitialized || query.isLoading || query.isFetching,
     isAuthorized:
       query.isSuccess && allowedRoles.includes(query.data.role),
   };

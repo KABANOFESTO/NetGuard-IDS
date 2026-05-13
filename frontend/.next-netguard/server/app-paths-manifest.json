@@ -1,7 +1,7 @@
 {
-  "/Admin/Devices/page": "app/Admin/Devices/page.js",
-  "/Admin/Users/page": "app/Admin/Users/page.js",
-  "/guest/(dashboard)/page": "app/guest/(dashboard)/page.js",
+  "/auth/(login)/page": "app/auth/(login)/page.js",
   "/student/(dashboard)/page": "app/student/(dashboard)/page.js",
-  "/student/Profile-settings/page": "app/student/Profile-settings/page.js"
+  "/student/my-devices/page": "app/student/my-devices/page.js",
+  "/student/Profile-settings/page": "app/student/Profile-settings/page.js",
+  "/student/alerts/page": "app/student/alerts/page.js"
 }
