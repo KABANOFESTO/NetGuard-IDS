@@ -3,6 +3,7 @@ import type { AuthResponse, AuthUser, UserRole } from "@/lib/redux/types/netguar
 const ACCESS_KEY = "access";
 const REFRESH_KEY = "refresh";
 const USER_KEY = "netguard_user";
+const AUTH_NOTICE_KEY = "netguard_auth_notice";
 
 const isBrowser = () => typeof window !== "undefined";
 
@@ -24,6 +25,26 @@ export function clearAuthSession() {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_KEY);
+}
+
+export function setAuthNotice(message: string) {
+  if (!isBrowser()) {
+    return;
+  }
+
+  sessionStorage.setItem(AUTH_NOTICE_KEY, message);
+}
+
+export function consumeAuthNotice() {
+  if (!isBrowser()) {
+    return null;
+  }
+
+  const message = sessionStorage.getItem(AUTH_NOTICE_KEY);
+  if (message) {
+    sessionStorage.removeItem(AUTH_NOTICE_KEY);
+  }
+  return message;
 }
 
 export function getAccessToken() {

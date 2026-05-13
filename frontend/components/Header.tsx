@@ -61,11 +61,10 @@ export default function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
       <div
-        className={`mx-auto max-w-7xl rounded-full border transition-all duration-300 ${
-          isScrolled
+        className={`mx-auto max-w-7xl rounded-full border transition-all duration-300 ${isScrolled
             ? 'border-white/12 bg-slate-950/75 shadow-[0_20px_50px_rgba(2,6,23,0.45)] backdrop-blur-xl'
             : 'border-white/10 bg-slate-950/45 backdrop-blur-lg'
-        }`}
+          }`}
       >
         <div className="flex items-center justify-between px-5 py-3 lg:px-7">
           <button
@@ -98,11 +97,10 @@ export default function Header() {
                     event.preventDefault();
                     handleNavClick(id);
                   }}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
-                    isActive
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${isActive
                       ? 'bg-white/10 text-white'
                       : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                  }`}
+                    }`}
                 >
                   {label}
                 </a>
@@ -118,10 +116,10 @@ export default function Header() {
               View overview
             </Link>
             <Link
-              href="#contact"
+              href="/auth"
               className="rounded-full bg-[linear-gradient(135deg,#22c55e,#0ea5e9)] px-5 py-2 text-sm font-semibold text-slate-950 transition-transform hover:-translate-y-0.5"
             >
-              Contact IT use case
+              Get Started
             </Link>
           </div>
 
@@ -147,11 +145,10 @@ export default function Header() {
                       event.preventDefault();
                       handleNavClick(id);
                     }}
-                    className={`rounded-2xl px-4 py-3 text-sm font-medium ${
-                      isActive
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium ${isActive
                         ? 'bg-white/10 text-white'
                         : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
+                      }`}
                   >
                     {label}
                   </a>

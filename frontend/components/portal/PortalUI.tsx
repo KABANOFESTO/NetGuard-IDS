@@ -142,9 +142,9 @@ type SimpleRow = {
 export function InfoList({ rows }: { rows: SimpleRow[] }) {
   return (
     <div className="space-y-3">
-      {rows.map((row) => (
+      {rows.map((row, index) => (
         <div
-          key={`${row.label}-${row.value}`}
+          key={`${row.label}-${row.value}-${index}`}
           className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3"
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -194,7 +194,7 @@ export function DataTable({ columns, rows }: DataTableProps) {
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {rows.map((row, index) => (
-              <tr key={index}>
+              <tr key={`row-${index}`}>
                 {columns.map((column) => (
                   <td key={column.key} className="px-4 py-4 text-sm text-slate-700">
                     {row[column.key]}

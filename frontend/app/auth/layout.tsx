@@ -1,7 +1,6 @@
 "use client";
 
 import { Work_Sans } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
 
 const workSans = Work_Sans({
     variable: "--font-work-sans",
@@ -14,12 +13,8 @@ export default function AuthLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <SessionProvider>
-           
-                    <div >
-                        {children}
-                    </div>
-                    
-        </SessionProvider>
+        <div className={workSans.variable}>
+            {children}
+        </div>
     );
 }
