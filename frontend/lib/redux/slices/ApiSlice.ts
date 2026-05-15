@@ -20,6 +20,13 @@ const rawBaseQuery = fetchBaseQuery({
       const requestUrl =
         typeof arg === "string" ? arg : typeof arg === "object" && arg?.url ? arg.url : "";
 
+      if (publicAuthPaths.has(requestUrl)) {
+        headers.delete("Authorization");
+        headers.delete("X-Device-Mac");
+        headers.delete("X-Device-Id");
+        return headers;
+      }
+
       if (typeof window !== "undefined") {
         const deviceIdentity = getClientDeviceIdentity();
         const storedDeviceId = getStoredDeviceId();
@@ -27,11 +34,6 @@ const rawBaseQuery = fetchBaseQuery({
         if (storedDeviceId) {
           headers.set("X-Device-Id", String(storedDeviceId));
         }
-      }
-
-      if (publicAuthPaths.has(requestUrl)) {
-        headers.delete("Authorization");
-        return headers;
       }
 
       if (typeof window !== "undefined") {
