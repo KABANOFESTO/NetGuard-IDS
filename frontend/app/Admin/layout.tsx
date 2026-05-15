@@ -26,7 +26,7 @@ export default function RootLayout({
         <div className="flex flex-row w-full min-h-screen lg:w-[100%] bg-none">
             <AdminSideBar />
             <div className="flex flex-col ml-auto w-full bg-slate-50 md:w-[calc(100%-16rem)]">
-                <Navbar onSearch={(query: string) => { /* handle search here */ }} />
+                <Navbar onSearch={() => { /* handle search here */ }} />
                 {children}
             </div>
         </div>

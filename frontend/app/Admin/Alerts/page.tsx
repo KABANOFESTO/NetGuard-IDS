@@ -10,6 +10,7 @@ import {
   useUpdateAlertMutation,
 } from "@/lib/redux/slices/AlertSlice";
 import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatters";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 export default function AdminAlertsPage() {
   const { data: summary } = useGetAlertSummaryQuery();
@@ -20,8 +21,8 @@ export default function AdminAlertsPage() {
     try {
       await updateAlert({ id, data: { status } }).unwrap();
       toast.success(`Alert marked as ${status}.`);
-    } catch (error: any) {
-      toast.error(error?.data?.detail ?? "Unable to update alert.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to update alert."));
     }
   };
 

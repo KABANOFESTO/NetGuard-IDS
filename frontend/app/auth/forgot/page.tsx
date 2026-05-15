@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForgotPasswordMutation } from '@/lib/redux/slices/AuthSlice';
+import { getApiErrorMessage, isFetchBaseQueryError } from '@/lib/utils/apiError';
 
 export default function Forgot() {
     const [email, setEmail] = useState('');
@@ -28,23 +29,15 @@ export default function Forgot() {
         }
     }, [isError, mutationError]);
 
-    const handleApiError = (err: any) => {
-        if (err?.status === 404) {
+    const handleApiError = (err: unknown) => {
+        if (isFetchBaseQueryError(err) && err.status === 404) {
             setError('Email not found in our system.');
-        } else if (err?.status === 429) {
+        } else if (isFetchBaseQueryError(err) && err.status === 429) {
             setError('Too many requests. Please try again later.');
-        } else if (err?.status === 500) {
+        } else if (isFetchBaseQueryError(err) && err.status === 500) {
             setError('Server error. Please try again later.');
-        } else if (err?.data?.message) {
-            setError(err.data.message);
-        } else if (err?.data?.email) {
-            setError(Array.isArray(err.data.email) ? err.data.email[0] : err.data.email);
-        } else if (err?.data?.detail) {
-            setError(err.data.detail);
-        } else if (err?.data?.non_field_errors) {
-            setError(Array.isArray(err.data.non_field_errors) ? err.data.non_field_errors[0] : err.data.non_field_errors);
         } else {
-            setError('Something went wrong. Please try again.');
+            setError(getApiErrorMessage(err, 'Something went wrong. Please try again.'));
         }
     };
 
@@ -74,7 +67,7 @@ export default function Forgot() {
 
             // Clear the form
             setEmail('');
-        } catch (err: any) {
+        } catch (err) {
             // Error handling is now done in useEffect
             console.error('Forgot password error:', err);
         }
@@ -148,7 +141,7 @@ export default function Forgot() {
                                     autoComplete="email"
                                 />
                                 <p className="text-sm text-gray-400 mt-2">
-                                    We'll send a password reset link to this email address.
+                                    We&apos;ll send a password reset link to this email address.
                                 </p>
                             </div>
 
