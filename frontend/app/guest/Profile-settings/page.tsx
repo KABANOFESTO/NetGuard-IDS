@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Badge, InfoList, PageHeader, Panel } from "@/components/portal/PortalUI";
 import { useGetMyDetailsQuery, useUpdateProfileMutation } from "@/lib/redux/slices/AuthSlice";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 export default function GuestProfileSettingsPage() {
   const { data: user } = useGetMyDetailsQuery({});
@@ -38,8 +39,8 @@ export default function GuestProfileSettingsPage() {
       await updateProfile(form).unwrap();
       toast.success("Profile updated successfully.");
       setForm((current) => ({ ...current, current_password: "", new_password: "" }));
-    } catch (error: any) {
-      toast.error(error?.data?.current_password?.[0] ?? error?.data?.new_password?.[0] ?? "Unable to update profile.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to update profile."));
     }
   };
 

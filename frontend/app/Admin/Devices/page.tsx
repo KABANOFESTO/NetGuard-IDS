@@ -14,6 +14,7 @@ import {
   useUnblockSecurityBlockMutation,
 } from "@/lib/redux/slices/SecuritySlice";
 import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatters";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 export default function AdminDevicesPage() {
   const { data: summary } = useGetDeviceSummaryQuery();
@@ -32,8 +33,8 @@ export default function AdminDevicesPage() {
     try {
       const response = await blockDevice({ id: deviceId, reason: "manual_block" }).unwrap();
       toast.success(response.message);
-    } catch (error: any) {
-      toast.error(error?.data?.error ?? "Unable to block device.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to block device."));
     }
   };
 
@@ -47,8 +48,8 @@ export default function AdminDevicesPage() {
     try {
       const response = await unblockSecurityBlock(activeBlock.id).unwrap();
       toast.success(response.message);
-    } catch (error: any) {
-      toast.error(error?.data?.error ?? "Unable to unblock device.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to unblock device."));
     }
   };
 

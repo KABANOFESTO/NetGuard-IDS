@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Shield, User2, Wifi } from "lucide-react";
+import { Eye, EyeOff, Mail, Shield, User2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { useRegisterMutation } from "@/lib/redux/slices/AuthSlice";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 const signupRoles = [
   { value: "Student", label: "Student" },
@@ -36,16 +37,8 @@ export default function SignupPage() {
       await register(form).unwrap();
       toast.success("Account created successfully. You can sign in now.");
       router.push("/auth");
-    } catch (error: any) {
-      const payload = error?.data;
-      const message =
-        typeof payload === "string"
-          ? payload
-          : payload?.email?.[0] ??
-          payload?.password?.[0] ??
-          payload?.detail ??
-          "Unable to create your account right now.";
-      toast.error(message);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to create your account right now."));
     }
   };
 
