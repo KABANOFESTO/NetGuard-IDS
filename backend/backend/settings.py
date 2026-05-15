@@ -70,11 +70,19 @@ ALLOWED_HOSTS = config(
     cast=Csv(),
 )
 
+render_external_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_external_hostname)
+
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
     default="http://localhost:3000,http://127.0.0.1:3000",
     cast=Csv(),
 )
+
+render_external_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
+if render_external_url and render_external_url not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(render_external_url)
 
 
 # Application definition
