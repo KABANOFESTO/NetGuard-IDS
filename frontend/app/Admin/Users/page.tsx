@@ -9,6 +9,7 @@ import {
   useToggleUserActiveMutation,
 } from "@/lib/redux/slices/AuthSlice";
 import { formatNumber, statusTone } from "@/lib/portal/formatters";
+import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 export default function AdminUsersPage() {
   const { data: users = [], isLoading } = useGetAllUsersQuery();
@@ -27,8 +28,8 @@ export default function AdminUsersPage() {
     try {
       const response = await toggleUserActive(userId).unwrap();
       toast.success(response.message);
-    } catch (error: any) {
-      toast.error(error?.data?.error ?? "Unable to change user status.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to change user status."));
     }
   };
 
