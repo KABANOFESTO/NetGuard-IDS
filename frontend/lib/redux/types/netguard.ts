@@ -14,6 +14,8 @@ export interface AuthUser {
   location: string | null;
   bachelor_degree: string | null;
   is_active: boolean;
+  can_delete?: boolean;
+  can_toggle_active?: boolean;
 }
 
 export interface AuthResponse {
