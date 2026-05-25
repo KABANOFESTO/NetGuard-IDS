@@ -155,11 +155,11 @@ export default function Header() {
                 );
               })}
               <Link
-                href="#contact"
+                href="/auth"
                 onClick={() => setMenuOpen(false)}
                 className="mt-2 rounded-2xl bg-[linear-gradient(135deg,#22c55e,#0ea5e9)] px-4 py-3 text-center text-sm font-semibold text-slate-950"
               >
-                Contact IT use case
+                Get Started
               </Link>
             </div>
           </div>

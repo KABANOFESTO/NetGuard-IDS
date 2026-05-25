@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.conf import settings
@@ -549,6 +550,24 @@ class UserListView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAdminOrInvestigatorOrPolice]
 
+    def get_queryset(self):
+        queryset = super().get_queryset().order_by("username", "id")
+        role = self.request.query_params.get("role")
+        status_filter = self.request.query_params.get("status")
+        search = self.request.query_params.get("search")
+
+        if role:
+            queryset = queryset.filter(role__iexact=role)
+        if status_filter:
+            queryset = queryset.filter(status__iexact=status_filter)
+        if search:
+            queryset = queryset.filter(
+                Q(email__icontains=search)
+                | Q(username__icontains=search)
+                | Q(employee_id__icontains=search)
+            )
+        return queryset
+
     def get(self, request, *args, **kwargs):
         # Log user list access
         log_action(
@@ -576,6 +595,22 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
                 }
         return changed
 
+    def _validate_user_admin_action(self, request, instance):
+        if instance == request.user:
+            return Response(
+                {"error": "Cannot perform this action on your own account."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if instance.role == 'Admin' and instance.status == 'Active':
+            active_admin_count = User.objects.filter(role='Admin', status='Active').count()
+            if active_admin_count <= 1:
+                return Response(
+                    {"error": "Cannot perform this action on the last active admin account."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        return None
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         
@@ -597,12 +632,14 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Log the update attempt
         logger.info(f"Admin {request.user.email} attempting to update user {instance.email}")
         
-        # Prevent admin from updating their own account through this endpoint
-        if instance == request.user:
-            return Response(
-                {"error": "Cannot update your own account through this endpoint. Use profile update instead."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        validation_error = self._validate_user_admin_action(request, instance)
+        if validation_error:
+            if instance == request.user:
+                return Response(
+                    {"error": "Cannot update your own account through this endpoint. Use profile update instead."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return validation_error
         
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -637,21 +674,15 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         """Handle user deletion with proper logging and safeguards"""
         instance = self.get_object()
-        
-        # Prevent admin from deleting their own account
-        if instance == request.user:
-            return Response(
-                {"error": "Cannot delete your own account."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
-        if instance.role == 'Admin':
-            active_admin_count = User.objects.filter(role='Admin', status='Active').count()
-            if active_admin_count <= 1:
+        validation_error = self._validate_user_admin_action(request, instance)
+        if validation_error:
+            if instance == request.user:
                 return Response(
-                    {"error": "Cannot delete the last active admin account."},
+                    {"error": "Cannot delete your own account."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            return validation_error
         
         # Log the deletion attempt
         logger.warning(f"Admin {request.user.email} is deleting user {instance.email} (ID: {instance.id})")
@@ -672,8 +703,12 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         logger.warning(f"User {user_data['email']} (ID: {user_data['id']}) successfully deleted by admin {request.user.email}")
         
         return Response(
-            {"message": f"User {user_data['email']} has been successfully deleted."}, 
-            status=status.HTTP_204_NO_CONTENT
+            {
+                "message": f"User {user_data['email']} has been successfully deleted.",
+                "deleted_user_id": user_data["id"],
+                "deleted_user_email": user_data["email"],
+            },
+            status=status.HTTP_200_OK
         )
 
 
@@ -753,8 +788,8 @@ class AdminUserDeleteView(generics.DestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if instance.role == 'Admin':
-            admin_count = User.objects.filter(role='Admin', is_active=True).count()
+        if instance.role == 'Admin' and instance.status == 'Active':
+            admin_count = User.objects.filter(role='Admin', status='Active').count()
             if admin_count <= 1:
                 return Response(
                     {"error": "Cannot delete the last active admin account."}, 
@@ -780,7 +815,11 @@ class AdminUserDeleteView(generics.DestroyAPIView):
         logger.warning(f"User {deleted_user_email} successfully deleted by admin {request.user.email}")
         
         return Response(
-            {"message": f"User {deleted_user_email} has been successfully deleted."}, 
+            {
+                "message": f"User {deleted_user_email} has been successfully deleted.",
+                "deleted_user_id": user_data["id"],
+                "deleted_user_email": deleted_user_email,
+            },
             status=status.HTTP_200_OK
         )
 

@@ -71,6 +71,8 @@ class InitialAdminBootstrapSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
+    can_toggle_active = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -87,6 +89,8 @@ class UserSerializer(serializers.ModelSerializer):
             'location',
             'bachelor_degree',
             'is_active',
+            'can_delete',
+            'can_toggle_active',
         )
 
     def get_profile_picture_url(self, obj):
@@ -96,7 +100,34 @@ class UserSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(url)
         return url
 
+    def _active_admin_count(self):
+        return User.objects.filter(role="Admin", status="Active").count()
+
+    def _is_admin_request(self, request):
+        return bool(request and request.user.is_authenticated and request.user.role == "Admin")
+
+    def get_can_delete(self, obj):
+        request = self.context.get("request")
+        if not self._is_admin_request(request):
+            return False
+        if obj == request.user:
+            return False
+        if obj.role == "Admin" and obj.status == "Active" and self._active_admin_count() <= 1:
+            return False
+        return True
+
+    def get_can_toggle_active(self, obj):
+        request = self.context.get("request")
+        if not self._is_admin_request(request):
+            return False
+        if obj == request.user:
+            return False
+        if obj.role == "Admin" and obj.status == "Active" and self._active_admin_count() <= 1:
+            return False
+        return True
+
 class ProfileUpdateSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=False)
     new_password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
     current_password = serializers.CharField(write_only=True, required=False)
     profile_picture = serializers.ImageField(required=False, allow_null=True)
@@ -105,25 +136,36 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'username',
+            'email',
             'current_password',
             'new_password',
             'profile_picture',
             'telephone',
             'location',
-            'is_active',
         ]
 
     def validate(self, data):
         user = self.context['request'].user
 
-        if 'new_password' in data:
-            if not user.check_password(data.get('current_password')):
-                raise serializers.ValidationError({"current_password": "Current password is incorrect."})
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+
+        if new_password and not current_password:
+            raise serializers.ValidationError({"current_password": "Current password is required to set a new password."})
+
+        if current_password and not new_password:
+            raise serializers.ValidationError({"new_password": "New password is required when current password is provided."})
+
+        if new_password and not user.check_password(current_password):
+            raise serializers.ValidationError({"current_password": "Current password is incorrect."})
         return data
 
     def update(self, instance, validated_data):
         if 'username' in validated_data:
             instance.username = validated_data['username']
+
+        if 'email' in validated_data:
+            instance.email = validated_data['email']
 
         if 'new_password' in validated_data:
             instance.set_password(validated_data['new_password'])
@@ -138,9 +180,6 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
         if 'location' in validated_data:
             instance.location = validated_data['location']
-
-        if 'is_active' in validated_data: 
-            instance.is_active = validated_data['is_active']
 
         instance.save()
         return instance

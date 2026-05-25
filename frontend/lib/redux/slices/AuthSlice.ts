@@ -65,10 +65,10 @@ const authApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["User"],
     }),
-    updateProfile: builder.mutation<AuthUser, FormData | Partial<AuthUser>>({
+    updateProfile: builder.mutation<AuthUser, FormData | Record<string, unknown>>({
       query: (data) => ({
         url: "auth/update-profile/",
-        method: "PUT",
+        method: "PATCH",
         body: data,
       }),
       invalidatesTags: ["Auth", "User"],
@@ -119,7 +119,7 @@ const authApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { id }) => ["User", { type: "User", id }],
     }),
-    deleteUser: builder.mutation<{ message: string }, number>({
+    deleteUser: builder.mutation<{ message: string; deleted_user_id?: number; deleted_user_email?: string }, number>({
       query: (id) => ({
         url: `auth/admin/users/${id}/delete/`,
         method: "DELETE",
