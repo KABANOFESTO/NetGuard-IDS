@@ -15,6 +15,8 @@ from .serializers import RegisterSerializer, UserSerializer, ProfileUpdateSerial
 from .permissions import IsAdmin, IsAdminOrInvestigator, IsAdminOrInvestigatorOrPolice, IsPolice, IsInvestigator
 from AuditLog.audit_log_utils import log_action 
 from devices.models import Device
+from devices.serializers import DeviceSerializer
+from security.models import BlockedEntity
 from monitoring.services import create_network_activity
 import logging
 
@@ -173,6 +175,16 @@ class InitialAdminBootstrapView(generics.CreateAPIView):
 class MyTokenObtainView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    def _extract_device_identity(self, request):
+        return {
+            "device_id": request.data.get("device_id"),
+            "mac_address": request.data.get("mac_address"),
+            "device_name": request.data.get("device_name"),
+            "device_type": request.data.get("device_type"),
+            "operating_system": request.data.get("operating_system"),
+            "registration_notes": request.data.get("registration_notes"),
+        }
+
     def _resolve_device(self, request):
         device_id = request.data.get("device_id")
         mac_address = request.data.get("mac_address")
@@ -181,6 +193,74 @@ class MyTokenObtainView(APIView):
         if mac_address:
             return Device.objects.filter(mac_address=mac_address).first()
         return None
+
+    def _ensure_device_record(self, request, user, ip_address):
+        device = self._resolve_device(request)
+        device_identity = self._extract_device_identity(request)
+
+        if device is not None:
+            if device.owner_id is None or device.owner_id == user.id:
+                device.owner = user
+                device.ip_address = ip_address
+                if device_identity.get("device_name"):
+                    device.device_name = device_identity["device_name"]
+                if device_identity.get("device_type"):
+                    device.device_type = device_identity["device_type"]
+                if device_identity.get("operating_system"):
+                    device.operating_system = device_identity["operating_system"]
+                if device_identity.get("registration_notes"):
+                    device.registration_notes = device_identity["registration_notes"]
+                if device.status == "blocked":
+                    device.is_registered = False
+                device.save()
+            return device
+
+        if device_identity.get("mac_address"):
+            return Device.objects.create(
+                owner=user,
+                device_name=device_identity.get("device_name") or f"{user.username}'s device",
+                device_type=device_identity.get("device_type") or "other",
+                ip_address=ip_address,
+                mac_address=device_identity["mac_address"],
+                operating_system=device_identity.get("operating_system"),
+                registration_notes=device_identity.get(
+                    "registration_notes",
+                    "Auto-registered during login to support network access monitoring.",
+                ),
+                is_registered=False,
+                status="unknown",
+            )
+
+        return None
+
+    def _build_network_access_context(self, user, device):
+        if device is None:
+            return {
+                "access_status": "granted",
+                "device_state": "untracked",
+                "blocked": False,
+                "current_device": None,
+                "message": "Network access granted. No device record was attached to this session.",
+            }
+
+        blocked = device.status == "blocked" or BlockedEntity.objects.filter(device=device, is_active=True).exists()
+        attention = not device.is_registered or device.status in {"unknown", "suspicious"}
+        access_status = "blocked" if blocked else "granted_with_attention" if attention else "granted"
+        device_state = "blocked" if blocked else "unregistered" if not device.is_registered else "known"
+        message = (
+            "Network access blocked because this device is restricted."
+            if blocked
+            else "Network access granted with device monitoring enabled."
+            if attention
+            else "Network access granted."
+        )
+        return {
+            "access_status": access_status,
+            "device_state": device_state,
+            "blocked": blocked,
+            "current_device": DeviceSerializer(device, context={"request": None}).data,
+            "message": message,
+        }
 
     def _get_request_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -191,7 +271,6 @@ class MyTokenObtainView(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
-        device = self._resolve_device(request)
         ip_address = self._get_request_ip(request)
         
         if not email or not password:
@@ -203,7 +282,11 @@ class MyTokenObtainView(APIView):
         user = authenticate(username=email, password=password)
         
         if user:
-            if device and device.owner_id == user.id and device.status == "blocked":
+            device = self._ensure_device_record(request, user, ip_address)
+            if device and device.owner_id == user.id and (
+                device.status == "blocked"
+                or BlockedEntity.objects.filter(device=device, is_active=True).exists()
+            ):
                 create_network_activity(
                     request=request,
                     user=user,
@@ -243,7 +326,8 @@ class MyTokenObtainView(APIView):
                 return Response({
                     'refresh': str(refresh),
                     'access': str(refresh.access_token),
-                    'user': UserSerializer(user, context={"request": request}).data
+                    'user': UserSerializer(user, context={"request": request}).data,
+                    'network_access': self._build_network_access_context(user, device),
                 }, status=status.HTTP_200_OK)
             else:
                 # Log failed login due to inactive account
@@ -291,7 +375,7 @@ class MyTokenObtainView(APIView):
             }
         )
         return Response(
-            {'error': 'Invalid credentials'}, 
+            {'error': 'Invalid credentials'},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
@@ -900,3 +984,59 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user, context={"request": request})
         return Response(serializer.data)
+
+
+class NetworkAccessContextView(APIView):
+    """Return the current authenticated user's device trust and network access state."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _resolve_current_device(self, request):
+        device = getattr(request, "current_device", None)
+        if device is not None:
+            return device
+
+        device_id = request.headers.get("X-Device-Id")
+        mac_address = request.headers.get("X-Device-Mac")
+        if device_id:
+            return Device.objects.filter(pk=device_id).first()
+        if mac_address:
+            return Device.objects.filter(mac_address=mac_address).first()
+        return None
+
+    def get(self, request):
+        device = self._resolve_current_device(request)
+        if device is None:
+            return Response(
+                {
+                    "access_status": "granted",
+                    "device_state": "untracked",
+                    "blocked": False,
+                    "current_device": None,
+                    "message": "Network access is active. No device is linked to this session yet.",
+                    "user": UserSerializer(request.user, context={"request": request}).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        blocked = device.status == "blocked" or BlockedEntity.objects.filter(device=device, is_active=True).exists()
+        attention = not device.is_registered or device.status in {"unknown", "suspicious"}
+        access_status = "blocked" if blocked else "granted_with_attention" if attention else "granted"
+        device_state = "blocked" if blocked else "unregistered" if not device.is_registered else "known"
+
+        return Response(
+            {
+                "access_status": access_status,
+                "device_state": device_state,
+                "blocked": blocked,
+                "current_device": DeviceSerializer(device, context={"request": request}).data,
+                "message": (
+                    "Network access is blocked for this device."
+                    if blocked
+                    else "Network access is active, but this device is still being monitored."
+                    if attention
+                    else "Network access is active and trusted."
+                ),
+                "user": UserSerializer(request.user, context={"request": request}).data,
+            },
+            status=status.HTTP_200_OK,
+        )

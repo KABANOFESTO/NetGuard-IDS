@@ -96,6 +96,8 @@ export const apiSlice = createApi({
     "MonitoringDashboard",
     "MonitoringReport",
     "SecurityBlock",
+    "NetworkEdgeProfile",
+    "NetworkEdgeActionLog",
     "AuditLog",
   ],
   endpoints: () => ({}),
