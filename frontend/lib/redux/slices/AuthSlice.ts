@@ -1,5 +1,5 @@
 import { apiSlice } from "./ApiSlice";
-import type { AuthResponse, AuthUser } from "../types/netguard";
+import type { AuthResponse, AuthUser, NetworkAccessContext } from "../types/netguard";
 
 interface LoginPayload {
   email: string;
@@ -7,6 +7,10 @@ interface LoginPayload {
   device_id?: number;
   mac_address?: string;
   ip_address?: string;
+  device_name?: string;
+  device_type?: string;
+  operating_system?: string;
+  registration_notes?: string;
 }
 
 interface RegisterPayload {
@@ -111,6 +115,13 @@ const authApi = apiSlice.injectEndpoints({
       }),
       providesTags: ["Auth"],
     }),
+    getAccessContext: builder.query<NetworkAccessContext, void | Record<string, never>>({
+      query: () => ({
+        url: "auth/access/",
+        method: "GET",
+      }),
+      providesTags: ["Auth"],
+    }),
     updateUser: builder.mutation<{ message?: string; user?: AuthUser } | AuthUser, UpdateUserPayload>({
       query: ({ id, data }) => ({
         url: `auth/admin/users/${id}/update/`,
@@ -153,6 +164,7 @@ export const {
   useGetAllUsersQuery,
   useGetUserByIdQuery,
   useGetMyDetailsQuery,
+  useGetAccessContextQuery,
   useLazyGetMyDetailsQuery,
   useCreateUserMutation,
   useUpdateUserMutation,

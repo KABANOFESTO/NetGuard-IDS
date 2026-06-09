@@ -22,6 +22,16 @@ export interface AuthResponse {
   refresh: string;
   access: string;
   user: AuthUser;
+  network_access?: NetworkAccessContext;
+}
+
+export interface NetworkAccessContext {
+  access_status: "granted" | "granted_with_attention" | "blocked";
+  device_state: "known" | "unregistered" | "blocked" | "untracked";
+  blocked: boolean;
+  current_device: Device | null;
+  message: string;
+  user: AuthUser;
 }
 
 export interface Device {
@@ -169,6 +179,86 @@ export interface SecurityBlock {
   expires_at: string | null;
   notes: string;
   is_active: boolean;
+}
+
+export type NetworkEdgeProviderType =
+  | "radius_captive_portal"
+  | "firewall_router"
+  | "access_point_controller";
+
+export interface NetworkEdgeProfile {
+  id: number;
+  name: string;
+  provider_type: NetworkEdgeProviderType;
+  base_url: string;
+  api_token?: string;
+  shared_secret?: string;
+  authorize_path: string;
+  revoke_path: string;
+  ban_path: string;
+  unban_path: string;
+  disconnect_path: string;
+  health_path: string;
+  timeout_seconds: number;
+  enabled: boolean;
+  is_default: boolean;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NetworkEdgeActionLog {
+  id: number;
+  profile: number | null;
+  profile_name: string | null;
+  action:
+    | "authorize"
+    | "revoke"
+    | "ban_mac"
+    | "unban_mac"
+    | "terminate_sessions"
+    | "health_check";
+  user: number | null;
+  user_email: string | null;
+  device: number | null;
+  device_name: string | null;
+  mac_address: string;
+  ip_address: string | null;
+  success: boolean;
+  status_code: string;
+  message: string;
+  response_payload: Record<string, unknown>;
+  performed_by: number | null;
+  performed_by_email: string | null;
+  created_at: string;
+}
+
+export interface NetworkEdgeActionRequest {
+  profile_id?: number | null;
+  action:
+    | "authorize"
+    | "revoke"
+    | "ban_mac"
+    | "unban_mac"
+    | "terminate_sessions"
+    | "health_check";
+  user_id?: number | null;
+  device_id?: number | null;
+  mac_address?: string;
+  ip_address?: string;
+  reason?: string;
+  notes?: string;
+  session_id?: string;
+  disconnect_all_sessions?: boolean;
+}
+
+export interface NetworkEdgeHealth {
+  enabled: boolean;
+  profile: NetworkEdgeProfile | null;
+  success?: boolean;
+  status_code?: string;
+  message: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface AuditLog {

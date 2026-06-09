@@ -5,7 +5,8 @@ import { Bell, RefreshCw, Search } from "lucide-react";
 import { useState } from "react";
 
 import { getProfilePathForRole } from "@/lib/auth/session";
-import { useGetMyDetailsQuery } from "@/lib/redux/slices/AuthSlice";
+import { Badge } from "@/components/portal/PortalUI";
+import { useGetAccessContextQuery, useGetMyDetailsQuery } from "@/lib/redux/slices/AuthSlice";
 
 type RoleNavbarProps = {
   onSearch: (query: string) => void;
@@ -32,6 +33,7 @@ export default function RoleNavbar({
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const { data: userDetails, isFetching, refetch } = useGetMyDetailsQuery({});
+  const { data: accessContext } = useGetAccessContextQuery({});
 
   return (
     <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 px-4 py-4 backdrop-blur md:px-6">
@@ -91,6 +93,26 @@ export default function RoleNavbar({
                   <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">
                     {userDetails?.role ?? "Account"}
                   </p>
+                  <div className="mt-3">
+                    <Badge
+                      tone={
+                        accessContext?.access_status === "blocked"
+                          ? "rose"
+                          : accessContext?.access_status === "granted_with_attention"
+                            ? "amber"
+                            : "emerald"
+                      }
+                    >
+                      {accessContext?.access_status === "blocked"
+                        ? "Network blocked"
+                        : accessContext?.access_status === "granted_with_attention"
+                          ? "Network monitored"
+                          : "Network secure"}
+                    </Badge>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      {accessContext?.message ?? "Network access is active and being tracked in real time."}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="mt-4 space-y-2">

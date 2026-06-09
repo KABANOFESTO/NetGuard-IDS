@@ -6,6 +6,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Monitor,
+  Network,
   SlidersHorizontal,
   UsersRound,
 } from "lucide-react";
@@ -18,6 +19,7 @@ const items = [
   { title: "Alerts", url: "/Admin/Alerts", icon: Bell },
   { title: "Devices", url: "/Admin/Devices", icon: Monitor },
   { title: "Users", url: "/Admin/Users", icon: UsersRound },
+  { title: "Network Control", url: "/Admin/Network-Control", icon: Network },
   { title: "Reports", url: "/Admin/Reports", icon: ClipboardList },
   { title: "Profile & settings", url: "/Admin/Profile-settings", icon: SlidersHorizontal },
 ];

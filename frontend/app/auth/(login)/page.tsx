@@ -71,9 +71,16 @@ export default function LoginPage() {
         password,
         device_id: storedDeviceId,
         mac_address: deviceIdentity.macAddress,
+        device_name: deviceIdentity.deviceName,
+        device_type: deviceIdentity.deviceType,
+        operating_system: deviceIdentity.operatingSystem,
+        registration_notes: deviceIdentity.registrationNotes,
       }).unwrap();
       persistAuthSession(response);
       toast.success(`Welcome back, ${response.user.username}.`);
+      if (response.network_access?.access_status === "granted_with_attention") {
+        toast.info(response.network_access.message);
+      }
       router.push(getDashboardPathForRole(response.user.role));
     } catch (error: unknown) {
       toast.error(getLoginErrorMessage(error));
@@ -108,7 +115,7 @@ export default function LoginPage() {
                 Sign in to NetGuard
               </h2>
               <p className="mt-3 text-sm leading-7 text-slate-600">
-                Use your university or guest credentials to access the portal that matches your role.
+                Use your university or guest credentials to establish secure network access.
               </p>
             </div>
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { useGetMyDetailsQuery } from "@/lib/redux/slices/AuthSlice";
+import { useGetAccessContextQuery } from "@/lib/redux/slices/AuthSlice";
 import type { UserRole } from "@/lib/redux/types/netguard";
 import { clearAuthSession, getAccessToken, getDashboardPathForRole } from "@/lib/auth/session";
 
@@ -17,7 +17,7 @@ export function useRoleGuard(allowedRoles: UserRole[]) {
     setIsInitialized(true);
   }, []);
 
-  const query = useGetMyDetailsQuery(
+  const query = useGetAccessContextQuery(
     hasToken ? {} : undefined,
     { skip: !isInitialized || !hasToken }
   );
@@ -37,8 +37,16 @@ export function useRoleGuard(allowedRoles: UserRole[]) {
       return;
     }
 
-    if (!allowedRoles.includes(query.data.role)) {
-      router.replace(getDashboardPathForRole(query.data.role));
+    const userRole = query.data?.user.role;
+
+    if (query.data?.blocked) {
+      clearAuthSession();
+      router.replace("/auth");
+      return;
+    }
+
+    if (userRole && !allowedRoles.includes(userRole)) {
+      router.replace(getDashboardPathForRole(userRole));
     }
   }, [allowedRoles, query.data, query.isSuccess, router]);
 
@@ -55,6 +63,9 @@ export function useRoleGuard(allowedRoles: UserRole[]) {
     ...query,
     isLoading: !isInitialized || query.isLoading || query.isFetching,
     isAuthorized:
-      query.isSuccess && allowedRoles.includes(query.data.role),
+      query.isSuccess &&
+      !query.data?.blocked &&
+      !!query.data?.user.role &&
+      allowedRoles.includes(query.data.user.role),
   };
 }

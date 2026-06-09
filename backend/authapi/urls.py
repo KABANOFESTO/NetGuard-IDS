@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import AdminUserCreateView, AdminUserDeleteView, AdminUserUpdateView, RegisterView, MyTokenObtainView, AdminOnlyView, PoliceOnlyView, InvestigatorOnlyView, ProfileUpdateView, ForgotPasswordView, ResetPasswordView, UserActivateDeactivateView, UserListView, UserDetailView, CurrentUserView, InitialAdminBootstrapView
+from .views import AdminUserCreateView, AdminUserDeleteView, AdminUserUpdateView, RegisterView, MyTokenObtainView, AdminOnlyView, PoliceOnlyView, InvestigatorOnlyView, ProfileUpdateView, ForgotPasswordView, ResetPasswordView, UserActivateDeactivateView, UserListView, UserDetailView, CurrentUserView, InitialAdminBootstrapView, NetworkAccessContextView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -13,6 +13,7 @@ urlpatterns = [
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     path('users/', UserListView.as_view(), name='user-list'),
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
+    path('access/', NetworkAccessContextView.as_view(), name='network-access-context'),
     path('admin/users/create/', AdminUserCreateView.as_view(), name='admin-user-create'),
     path('admin/users/<int:pk>/update/', AdminUserUpdateView.as_view(), name='admin-user-update'),
     path('admin/users/<int:pk>/delete/', AdminUserDeleteView.as_view(), name='admin-user-delete'),
