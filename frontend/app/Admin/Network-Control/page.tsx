@@ -5,7 +5,7 @@ import { Network, RefreshCcw, Radio, ShieldAlert, ShieldCheck } from "lucide-rea
 import { toast } from "sonner";
 
 import { Badge, EmptyState, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
-import { useGetDevicesQuery } from "@/lib/redux/slices/DeviceSlice";
+import { useBlockDeviceMutation, useGetDevicesQuery } from "@/lib/redux/slices/DeviceSlice";
 import {
   useCreateNetworkEdgeProfileMutation,
   useDeleteNetworkEdgeProfileMutation,
@@ -13,6 +13,8 @@ import {
   useGetNetworkEdgeActionLogsQuery,
   useGetNetworkEdgeHealthQuery,
   useGetNetworkEdgeProfilesQuery,
+  useGetSecurityBlocksQuery,
+  useUnblockSecurityBlockMutation,
   useUpdateNetworkEdgeProfileMutation,
 } from "@/lib/redux/slices/SecuritySlice";
 import type { NetworkEdgeActionRequest, NetworkEdgeProfile } from "@/lib/redux/types/netguard";
@@ -67,8 +69,11 @@ const actionLabels: Record<NetworkEdgeActionRequest["action"], string> = {
 export default function AdminNetworkControlPage() {
   const { data: profiles = [], refetch: refetchProfiles, isLoading: profilesLoading } = useGetNetworkEdgeProfilesQuery();
   const { data: devices = [], isLoading: devicesLoading } = useGetDevicesQuery({ same_network: true });
+  const { data: activeBlocks = [] } = useGetSecurityBlocksQuery(true);
   const { data: health, refetch: refetchHealth } = useGetNetworkEdgeHealthQuery();
   const { data: logs = [], refetch: refetchLogs, isFetching: logsFetching } = useGetNetworkEdgeActionLogsQuery(undefined);
+  const [blockDevice] = useBlockDeviceMutation();
+  const [unblockSecurityBlock] = useUnblockSecurityBlockMutation();
   const [createProfile] = useCreateNetworkEdgeProfileMutation();
   const [updateProfile] = useUpdateNetworkEdgeProfileMutation();
   const [deleteProfile] = useDeleteNetworkEdgeProfileMutation();
@@ -121,6 +126,10 @@ export default function AdminNetworkControlPage() {
   }, [devices, selectedDeviceId]);
 
   const selectedDevice = devices.find((device) => device.id === selectedDeviceId) ?? null;
+  const hasNetworkEdgeProfile = Boolean(health?.enabled && health.profile);
+  const activeBlockForSelectedDevice = selectedDevice
+    ? activeBlocks.find((block) => block.device === selectedDevice.id && block.is_active)
+    : null;
   const selectedDeviceRisk = selectedDevice
     ? selectedDevice.status === "blocked"
       ? { label: "Blocked", tone: "rose" as const }
@@ -179,6 +188,33 @@ export default function AdminNetworkControlPage() {
     }
 
     try {
+      if (!hasNetworkEdgeProfile && actionForm.action !== "health_check") {
+        if (!selectedDevice) {
+          toast.error("Please choose a device from the current network first.");
+          return;
+        }
+
+        if (actionForm.action === "ban_mac" || actionForm.action === "terminate_sessions" || actionForm.action === "revoke") {
+          await blockDevice({
+            id: selectedDevice.id,
+            reason: actionForm.reason as "intrusion" | "suspicious_activity" | "manual_block",
+          }).unwrap();
+          toast.success("Device controlled locally on the current network. Add a controller profile to push the action to the router or access point.");
+          await refreshAll();
+          return;
+        }
+
+        if ((actionForm.action === "unban_mac" || actionForm.action === "authorize") && activeBlockForSelectedDevice) {
+          await unblockSecurityBlock(activeBlockForSelectedDevice.id).unwrap();
+          toast.success("Access restored locally for the current network.");
+          await refreshAll();
+          return;
+        }
+
+        toast.error("No active local block was found for this device.");
+        return;
+      }
+
       await executeAction({
         profile_id: selectedProfileId ?? undefined,
         action: actionForm.action,
@@ -230,6 +266,9 @@ export default function AdminNetworkControlPage() {
           <div className="flex flex-wrap gap-2">
             <Badge tone="violet">{devices.length} devices on network</Badge>
             <Badge tone={health?.success ? "emerald" : "amber"}>{health?.message ?? "Health not checked yet"}</Badge>
+            <Badge tone={hasNetworkEdgeProfile ? "emerald" : "rose"}>
+              {hasNetworkEdgeProfile ? "Edge profile ready" : "Local control active"}
+            </Badge>
           </div>
         </div>
       </div>
@@ -307,6 +346,9 @@ export default function AdminNetworkControlPage() {
                     <p className="text-xs uppercase tracking-wide text-slate-300">Why it is visible</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">
                       This device is currently visible on the active control network, so you can review it, monitor it, and apply a network action without entering manual identifiers.
+                      {hasNetworkEdgeProfile
+                        ? " Edge enforcement is ready for the router or access point."
+                        : " Edge enforcement is not configured yet, so control actions stay local to this network and stop applying when the device moves to another network."}
                     </p>
                   </div>
                 </div>
@@ -381,7 +423,11 @@ export default function AdminNetworkControlPage() {
                 disabled={executing || (!selectedDevice && actionForm.action !== "health_check")}
                 className="rounded-full bg-rose-600 px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {executing ? "Sending..." : actionLabels[actionForm.action]}
+                {executing
+                  ? "Sending..."
+                  : !hasNetworkEdgeProfile && actionForm.action === "ban_mac"
+                    ? "Apply local control"
+                    : actionLabels[actionForm.action]}
               </button>
             </div>
           </div>

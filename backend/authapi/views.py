@@ -257,7 +257,7 @@ class MyTokenObtainView(APIView):
                     "device_state": "blocked",
                     "blocked": True,
                     "current_device": None,
-                    "message": "Network access blocked because this device MAC address is restricted.",
+                    "message": "Network access is blocked on the current Wi-Fi because this device MAC address is restricted.",
                 }
             return {
                 "access_status": "granted",
@@ -276,7 +276,7 @@ class MyTokenObtainView(APIView):
         access_status = "blocked" if blocked else "granted_with_attention" if attention else "granted"
         device_state = "blocked" if blocked else "unregistered" if not device.is_registered else "known"
         message = (
-            "Network access blocked because this device is restricted."
+            "Network access is blocked on the current Wi-Fi because this device is restricted."
             if blocked
             else "Network access granted with device monitoring enabled."
             if attention
@@ -1068,7 +1068,7 @@ class NetworkAccessContextView(APIView):
                         "device_state": "blocked",
                         "blocked": True,
                         "current_device": None,
-                        "message": "Network access is blocked for this MAC address.",
+                        "message": "Network access is blocked on the current Wi-Fi for this MAC address.",
                         "user": UserSerializer(request.user, context={"request": request}).data,
                     },
                     status=status.HTTP_200_OK,
