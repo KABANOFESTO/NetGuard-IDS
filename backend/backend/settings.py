@@ -252,3 +252,8 @@ AUTH_USER_MODEL = "authapi.User"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 INITIAL_ADMIN_BOOTSTRAP_SECRET = config("INITIAL_ADMIN_BOOTSTRAP_SECRET", default="")
+NETWORK_CONTROL_CIDRS = config(
+    "NETWORK_CONTROL_CIDRS",
+    default="127.0.0.1/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+    cast=Csv(),
+)

@@ -4,6 +4,7 @@ import type { Device, DeviceSummary } from "../types/netguard";
 interface DeviceFilters {
   status?: string;
   is_registered?: boolean;
+  same_network?: boolean;
 }
 
 interface DeviceStatusPayload {
@@ -30,6 +31,10 @@ const buildDeviceParams = (filters?: DeviceFilters | void) => {
     params.set("is_registered", String(filters.is_registered));
   }
 
+  if (typeof filters?.same_network === "boolean") {
+    params.set("same_network", String(filters.same_network));
+  }
+
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
 };
@@ -43,9 +48,9 @@ const deviceApi = apiSlice.injectEndpoints({
       }),
       providesTags: ["Device"],
     }),
-    getDeviceSummary: builder.query<DeviceSummary, void>({
-      query: () => ({
-        url: "devices/summary/",
+    getDeviceSummary: builder.query<DeviceSummary, DeviceFilters | void>({
+      query: (filters) => ({
+        url: `devices/summary/${buildDeviceParams(filters)}`,
         method: "GET",
       }),
       providesTags: ["DeviceSummary"],

@@ -5,10 +5,16 @@ from rest_framework.views import APIView
 
 from AuditLog.audit_log_utils import log_action
 from authapi.permissions import IsAdmin
+from security.network_scope import get_client_ip, is_controlled_request, is_same_network
 from security.services import block_entity
 
 from .models import Device
 from .serializers import DeviceSerializer, DeviceStatusSerializer
+
+
+def _filter_same_network(queryset, request_ip):
+    device_ids = [device.id for device in queryset if is_same_network(device.ip_address, request_ip)]
+    return queryset.filter(id__in=device_ids)
 
 
 class DeviceListCreateView(generics.ListCreateAPIView):
@@ -17,10 +23,7 @@ class DeviceListCreateView(generics.ListCreateAPIView):
     queryset = Device.objects.all().select_related("owner")
 
     def _get_request_ip(self):
-        x_forwarded_for = self.request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return self.request.META.get("REMOTE_ADDR") or "127.0.0.1"
+        return get_client_ip(self.request)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -30,10 +33,17 @@ class DeviceListCreateView(generics.ListCreateAPIView):
 
         status_filter = self.request.query_params.get("status")
         registered = self.request.query_params.get("is_registered")
+        same_network = self.request.query_params.get("same_network")
+        request_ip = self._get_request_ip()
         if status_filter:
             queryset = queryset.filter(status=status_filter)
         if registered in {"true", "false"}:
             queryset = queryset.filter(is_registered=(registered == "true"))
+        if same_network == "true":
+            if is_controlled_request(self.request):
+                queryset = _filter_same_network(queryset, request_ip)
+            else:
+                queryset = queryset.none()
         return queryset
 
     def perform_create(self, serializer):
@@ -126,6 +136,7 @@ class DeviceBlockView(APIView):
             request=request,
             user=None,
             device=device,
+            mac_address=device.mac_address,
             reason=request.data.get("reason", "manual_block"),
             notes=notes,
         )
@@ -135,8 +146,20 @@ class DeviceBlockView(APIView):
 class DeviceSummaryView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
+    def _get_request_ip(self):
+        return get_client_ip(self.request)
+
     def get(self, request):
         queryset = Device.objects.all()
+        same_network = request.query_params.get("same_network")
+        request_ip = self._get_request_ip()
+
+        if same_network == "true":
+            if is_controlled_request(request):
+                queryset = _filter_same_network(queryset, request_ip)
+            else:
+                queryset = queryset.none()
+
         return Response(
             {
                 "total_devices": queryset.count(),
