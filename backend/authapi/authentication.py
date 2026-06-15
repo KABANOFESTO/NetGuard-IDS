@@ -41,7 +41,7 @@ class DeviceAwareJWTAuthentication(JWTAuthentication):
             if is_blocked:
                 raise AuthenticationFailed(
                     detail={
-                        "error": "This device has been blocked by the administrator.",
+                        "error": "This device is blocked on the current network.",
                         "code": "device_blocked",
                         "device_id": device.id,
                         "device_name": device.device_name,
@@ -50,7 +50,7 @@ class DeviceAwareJWTAuthentication(JWTAuthentication):
         elif blocked_by_mac:
             raise AuthenticationFailed(
                 detail={
-                    "error": "This device has been blocked by the administrator.",
+                    "error": "This device is blocked on the current network.",
                     "code": "device_blocked",
                 }
             )
