@@ -1,24 +1,17 @@
 "use client";
 
-import { Laptop, Monitor, ShieldCheck, Smartphone } from "lucide-react";
+import { Laptop, Monitor, Network, ShieldCheck, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge, DataTable, EmptyState, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
-import {
-  useBlockDeviceMutation,
-  useGetDevicesQuery,
-  useGetDeviceSummaryQuery,
-} from "@/lib/redux/slices/DeviceSlice";
-import {
-  useGetSecurityBlocksQuery,
-  useUnblockSecurityBlockMutation,
-} from "@/lib/redux/slices/SecuritySlice";
+import { useBlockDeviceMutation, useGetDevicesQuery, useGetDeviceSummaryQuery } from "@/lib/redux/slices/DeviceSlice";
+import { useGetSecurityBlocksQuery, useUnblockSecurityBlockMutation } from "@/lib/redux/slices/SecuritySlice";
 import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatters";
 import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 export default function AdminDevicesPage() {
-  const { data: summary } = useGetDeviceSummaryQuery();
-  const { data: devices = [], isLoading } = useGetDevicesQuery();
+  const { data: summary } = useGetDeviceSummaryQuery({ same_network: true });
+  const { data: devices = [], isLoading } = useGetDevicesQuery({ same_network: true });
   const { data: activeBlocks = [] } = useGetSecurityBlocksQuery(true);
   const [blockDevice, { isLoading: blocking }] = useBlockDeviceMutation();
   const [unblockSecurityBlock, { isLoading: unblocking }] = useUnblockSecurityBlockMutation();
@@ -57,18 +50,63 @@ export default function AdminDevicesPage() {
     <div className="space-y-6 bg-slate-50 px-4 py-6 md:px-6 lg:px-8">
       <PageHeader
         eyebrow="Device Control"
-        title="Track registered endpoints, spot unknown devices, and enforce trust state."
-        description="Device identification is a core NetGuard feature. This view lets the IT team compare IP and MAC identity, see whether a device is registered, and take response action when something looks wrong."
+        title="Track devices seen on the current university network and control them without typing MAC addresses."
+        description="This view shows only endpoints detected on the active network segment, so admins can review IP and MAC identity, see trust state, and block or unblock devices directly from the list."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Monitor} label="Known devices" value={formatNumber(summary?.total_devices)} detail="Devices currently stored in the university inventory." tone="emerald" />
-        <StatCard icon={ShieldCheck} label="Trusted now" value={formatNumber(summary?.active_devices)} detail="Active devices that are not blocked or suspicious." tone="sky" />
-        <StatCard icon={Laptop} label="Under review" value={formatNumber(summary?.suspicious_devices)} detail="Devices marked suspicious because of monitoring rules." tone="amber" />
-        <StatCard icon={Smartphone} label="Unknown or unregistered" value={formatNumber((summary?.unknown_devices ?? 0) + (summary?.unregistered_devices ?? 0))} detail="Endpoints that need identity validation." tone="rose" />
+      <div className="rounded-3xl border border-sky-200 bg-sky-50/80 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-white p-3 text-sky-700 shadow-sm">
+              <Network className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Current network status</p>
+              <p className="mt-1 text-sm text-slate-600">
+                NetGuard is showing devices detected on the active control network. Devices on other Wi-Fi networks stay accessible normally unless they are linked to a block record.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="sky">Current network only</Badge>
+            <Badge tone="emerald">{formatNumber(summary?.active_devices ?? 0)} trusted</Badge>
+            <Badge tone="amber">{formatNumber(summary?.suspicious_devices ?? 0)} under review</Badge>
+          </div>
+        </div>
       </div>
 
-      <Panel title="Device inventory" description="Live inventory of network-connected devices and their latest trust state.">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          icon={Monitor}
+          label="Same-network devices"
+          value={formatNumber(summary?.total_devices)}
+          detail="Endpoints detected on the current control network."
+          tone="emerald"
+        />
+        <StatCard
+          icon={ShieldCheck}
+          label="Trusted now"
+          value={formatNumber(summary?.active_devices)}
+          detail="Active devices that are not blocked or suspicious."
+          tone="sky"
+        />
+        <StatCard
+          icon={Laptop}
+          label="Under review"
+          value={formatNumber(summary?.suspicious_devices)}
+          detail="Devices marked suspicious because of monitoring rules."
+          tone="amber"
+        />
+        <StatCard
+          icon={Smartphone}
+          label="Unknown or unregistered"
+          value={formatNumber((summary?.unknown_devices ?? 0) + (summary?.unregistered_devices ?? 0))}
+          detail="Endpoints that need identity validation."
+          tone="rose"
+        />
+      </div>
+
+      <Panel title="Current network inventory" description="Only devices seen on the active control network are listed here.">
         {isLoading ? (
           <EmptyState title="Loading devices" description="Fetching the current device inventory from the backend." />
         ) : devices.length ? (
@@ -85,7 +123,10 @@ export default function AdminDevicesPage() {
               device: (
                 <div>
                   <p className="font-medium text-slate-900">{device.device_name}</p>
-                  <p className="text-xs text-slate-500">{device.device_type} {device.operating_system ? `• ${device.operating_system}` : ""}</p>
+                  <p className="text-xs text-slate-500">
+                    {device.device_type}
+                    {device.operating_system ? ` • ${device.operating_system}` : ""}
+                  </p>
                 </div>
               ),
               owner: device.owner_name || device.owner_email || "Unassigned",
@@ -97,7 +138,7 @@ export default function AdminDevicesPage() {
               ),
               status: <Badge tone={statusTone(device.status)}>{device.status}</Badge>,
               last_seen: formatDateTime(device.last_seen),
-              action: (
+              action:
                 device.status === "blocked" ? (
                   <button
                     type="button"
@@ -116,12 +157,14 @@ export default function AdminDevicesPage() {
                   >
                     Block
                   </button>
-                )
-              ),
+                ),
             }))}
           />
         ) : (
-          <EmptyState title="No devices available" description="There are no registered devices in the system yet." />
+          <EmptyState
+            title="No devices on this network"
+            description="NetGuard did not detect any devices on the current control network yet."
+          />
         )}
       </Panel>
     </div>

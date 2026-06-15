@@ -37,6 +37,7 @@ class BlockedEntityListCreateView(generics.ListCreateAPIView):
             request=self.request,
             user=serializer.validated_data.get("user"),
             device=serializer.validated_data.get("device"),
+            mac_address=serializer.validated_data.get("mac_address", ""),
             reason=serializer.validated_data["reason"],
             notes=serializer.validated_data.get("notes", ""),
             expires_at=serializer.validated_data.get("expires_at"),

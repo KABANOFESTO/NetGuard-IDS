@@ -128,18 +128,28 @@ def perform_network_edge_action(
         )
 
 
-def block_entity(*, request=None, user=None, device=None, reason, notes="", expires_at=None):
+def block_entity(*, request=None, user=None, device=None, mac_address="", reason, notes="", expires_at=None):
+    resolved_mac = mac_address
+    if not resolved_mac and device is not None:
+        resolved_mac = getattr(device, "mac_address", "")
+    lookup = {"is_active": True}
+    if user is not None:
+        lookup["user"] = user
+    if device is not None:
+        lookup["device"] = device
+    if user is None and device is None and resolved_mac:
+        lookup["mac_address"] = resolved_mac
+
     block, created = BlockedEntity.objects.update_or_create(
-        user=user,
-        device=device,
-        is_active=True,
         defaults={
+            "mac_address": resolved_mac,
             "reason": reason,
             "blocked_by": getattr(request, "user", None) if request and request.user.is_authenticated else None,
             "notes": notes,
             "expires_at": expires_at,
             "unblocked_at": None,
         },
+        **lookup,
     )
 
     if device is not None:
@@ -171,6 +181,7 @@ def block_entity(*, request=None, user=None, device=None, reason, notes="", expi
         request=request,
         user=user,
         device=device,
+        mac_address=resolved_mac,
         reason=reason,
         notes=notes or "Access has been blocked by an administrator.",
     )
@@ -180,6 +191,7 @@ def block_entity(*, request=None, user=None, device=None, reason, notes="", expi
             request=request,
             user=user,
             device=device,
+            mac_address=resolved_mac,
             reason=reason,
             notes=notes or "Terminate active sessions after block.",
             disconnect_all_sessions=True,
@@ -215,6 +227,7 @@ def unblock_entity(block, request=None):
         request=request,
         user=block.user,
         device=block.device,
+        mac_address=block.mac_address,
         reason=block.reason,
         notes="Block removed by administrator.",
     )
@@ -223,6 +236,7 @@ def unblock_entity(block, request=None):
         request=request,
         user=block.user,
         device=block.device,
+        mac_address=block.mac_address,
         reason=block.reason,
         notes="Revoke captive portal restriction.",
     )

@@ -115,6 +115,8 @@ class BlockedEntity(models.Model):
         blank=True
     )
 
+    mac_address = models.CharField(max_length=100, blank=True, db_index=True)
+
     reason = models.CharField(max_length=100, choices=BLOCK_REASON_CHOICES)
 
     blocked_by = models.ForeignKey(

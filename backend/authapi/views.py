@@ -17,6 +17,7 @@ from AuditLog.audit_log_utils import log_action
 from devices.models import Device
 from devices.serializers import DeviceSerializer
 from security.models import BlockedEntity
+from security.network_scope import get_client_ip, is_controlled_request
 from monitoring.services import create_network_activity
 import logging
 
@@ -194,6 +195,14 @@ class MyTokenObtainView(APIView):
             return Device.objects.filter(mac_address=mac_address).first()
         return None
 
+    def _get_request_mac(self, request):
+        return (
+            request.headers.get("X-Device-Mac")
+            or request.data.get("mac_address")
+            or request.data.get("device_mac")
+            or ""
+        )
+
     def _ensure_device_record(self, request, user, ip_address):
         device = self._resolve_device(request)
         device_identity = self._extract_device_identity(request)
@@ -234,7 +243,22 @@ class MyTokenObtainView(APIView):
         return None
 
     def _build_network_access_context(self, user, device):
+        request_mac = getattr(self, "_current_request_mac", "")
+        in_controlled_network = is_controlled_request(self.request)
+        blocked_by_mac = bool(
+            in_controlled_network
+            and request_mac
+            and BlockedEntity.objects.filter(mac_address=request_mac, is_active=True).exists()
+        )
         if device is None:
+            if blocked_by_mac:
+                return {
+                    "access_status": "blocked",
+                    "device_state": "blocked",
+                    "blocked": True,
+                    "current_device": None,
+                    "message": "Network access blocked because this device MAC address is restricted.",
+                }
             return {
                 "access_status": "granted",
                 "device_state": "untracked",
@@ -243,7 +267,11 @@ class MyTokenObtainView(APIView):
                 "message": "Network access granted. No device record was attached to this session.",
             }
 
-        blocked = device.status == "blocked" or BlockedEntity.objects.filter(device=device, is_active=True).exists()
+        blocked = in_controlled_network and (
+            device.status == "blocked"
+            or BlockedEntity.objects.filter(device=device, is_active=True).exists()
+            or blocked_by_mac
+        )
         attention = not device.is_registered or device.status in {"unknown", "suspicious"}
         access_status = "blocked" if blocked else "granted_with_attention" if attention else "granted"
         device_state = "blocked" if blocked else "unregistered" if not device.is_registered else "known"
@@ -263,20 +291,39 @@ class MyTokenObtainView(APIView):
         }
 
     def _get_request_ip(self, request):
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR") or request.data.get("ip_address") or "127.0.0.1"
+        return get_client_ip(request)
 
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
         ip_address = self._get_request_ip(request)
+        self._current_request_mac = self._get_request_mac(request)
         
         if not email or not password:
             return Response(
                 {'error': 'Email and password are required'}, 
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if (
+            is_controlled_request(request)
+            and self._current_request_mac
+            and BlockedEntity.objects.filter(mac_address=self._current_request_mac, is_active=True).exists()
+        ):
+            create_network_activity(
+                request=request,
+                user=None,
+                device=None,
+                activity_type="restricted_access",
+                description="Blocked MAC attempted to sign in.",
+                ip_address=ip_address,
+                outcome="blocked",
+                metadata={"reason": "mac_blocked", "mac_address": self._current_request_mac},
+                is_suspicious=True,
+            )
+            return Response(
+                {"error": "This device MAC address has been blocked by the administrator."},
+                status=status.HTTP_403_FORBIDDEN,
             )
         
         user = authenticate(username=email, password=password)
@@ -1003,9 +1050,29 @@ class NetworkAccessContextView(APIView):
             return Device.objects.filter(mac_address=mac_address).first()
         return None
 
+    def _get_request_mac(self, request):
+        return request.headers.get("X-Device-Mac") or ""
+
     def get(self, request):
         device = self._resolve_current_device(request)
+        request_mac = self._get_request_mac(request)
+        in_controlled_network = is_controlled_request(request)
+        blocked_by_mac = bool(
+            in_controlled_network and request_mac and BlockedEntity.objects.filter(mac_address=request_mac, is_active=True).exists()
+        )
         if device is None:
+            if blocked_by_mac:
+                return Response(
+                    {
+                        "access_status": "blocked",
+                        "device_state": "blocked",
+                        "blocked": True,
+                        "current_device": None,
+                        "message": "Network access is blocked for this MAC address.",
+                        "user": UserSerializer(request.user, context={"request": request}).data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
             return Response(
                 {
                     "access_status": "granted",
@@ -1018,7 +1085,9 @@ class NetworkAccessContextView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        blocked = device.status == "blocked" or BlockedEntity.objects.filter(device=device, is_active=True).exists()
+        blocked = in_controlled_network and (
+            device.status == "blocked" or BlockedEntity.objects.filter(device=device, is_active=True).exists() or blocked_by_mac
+        )
         attention = not device.is_registered or device.status in {"unknown", "suspicious"}
         access_status = "blocked" if blocked else "granted_with_attention" if attention else "granted"
         device_state = "blocked" if blocked else "unregistered" if not device.is_registered else "known"
