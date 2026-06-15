@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Network, RefreshCcw, Radio, ShieldAlert, ShieldCheck, Smartphone } from "lucide-react";
+import { Network, RefreshCcw, Radio, ShieldAlert, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge, EmptyState, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
@@ -76,13 +76,8 @@ export default function AdminNetworkControlPage() {
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | null>(null);
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
-  const [actionForm, setActionForm] = useState<{
-    action: NetworkEdgeActionRequest["action"];
-    reason: string;
-    notes: string;
-    disconnect_all_sessions: boolean;
-  }>({
-    action: "ban_mac",
+  const [actionForm, setActionForm] = useState({
+    action: "ban_mac" as NetworkEdgeActionRequest["action"],
     reason: "manual_block",
     notes: "",
     disconnect_all_sessions: true,
@@ -119,12 +114,20 @@ export default function AdminNetworkControlPage() {
       setSelectedDeviceId(null);
       return;
     }
+
     if (!selectedDeviceId || !devices.some((device) => device.id === selectedDeviceId)) {
       setSelectedDeviceId(devices[0].id);
     }
   }, [devices, selectedDeviceId]);
 
   const selectedDevice = devices.find((device) => device.id === selectedDeviceId) ?? null;
+  const selectedDeviceRisk = selectedDevice
+    ? selectedDevice.status === "blocked"
+      ? { label: "Blocked", tone: "rose" as const }
+      : selectedDevice.status === "suspicious" || !selectedDevice.is_registered
+        ? { label: "Watch", tone: "amber" as const }
+        : { label: "Trusted", tone: "emerald" as const }
+    : null;
 
   const refreshAll = async () => {
     await Promise.all([refetchProfiles(), refetchHealth(), refetchLogs()]);
@@ -276,17 +279,39 @@ export default function AdminNetworkControlPage() {
 
         <Panel title="Action console" description="Apply a network decision to the selected device.">
           <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Selected device</p>
+            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-5 text-white shadow-lg">
+              <p className="text-xs font-medium uppercase tracking-[0.3em] text-slate-300">Selected device</p>
               {selectedDevice ? (
-                <div className="mt-3">
-                  <p className="font-semibold text-slate-900">{selectedDevice.device_name}</p>
-                  <p className="text-sm text-slate-600">
-                    {selectedDevice.owner_name || selectedDevice.owner_email || "Unassigned"} • {selectedDevice.ip_address} • {selectedDevice.mac_address}
-                  </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+                  <div>
+                    <p className="text-2xl font-semibold tracking-tight">{selectedDevice.device_name}</p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      {selectedDevice.owner_name || selectedDevice.owner_email || "Unassigned"}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {selectedDeviceRisk ? <Badge tone={selectedDeviceRisk.tone}>{selectedDeviceRisk.label}</Badge> : null}
+                      <Badge tone={statusTone(selectedDevice.status)}>{selectedDevice.status}</Badge>
+                      <Badge tone={selectedDevice.is_registered ? "emerald" : "amber"}>
+                        {selectedDevice.is_registered ? "Registered" : "Unregistered"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-300">Last seen</p>
+                    <p className="mt-2 text-sm font-medium text-white">{formatDateTime(selectedDevice.last_seen)}</p>
+                    <p className="mt-4 text-xs uppercase tracking-wide text-slate-300">Identity</p>
+                    <p className="mt-2 text-sm text-slate-200">{selectedDevice.ip_address}</p>
+                    <p className="text-sm text-slate-200">{selectedDevice.mac_address}</p>
+                  </div>
+                  <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/10 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-300">Why it is visible</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">
+                      This device is currently visible on the active control network, so you can review it, monitor it, and apply a network action without entering manual identifiers.
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-slate-500">Choose a device from the left to continue.</p>
+                <p className="mt-3 text-sm text-slate-300">Choose a device from the left to continue.</p>
               )}
             </div>
 
