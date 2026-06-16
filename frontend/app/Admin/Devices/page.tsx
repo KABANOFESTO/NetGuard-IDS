@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Laptop, Monitor, Network, ShieldCheck, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,8 +11,9 @@ import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatter
 import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 export default function AdminDevicesPage() {
-  const { data: summary } = useGetDeviceSummaryQuery({ same_network: true });
-  const { data: devices = [], isLoading } = useGetDevicesQuery({ same_network: true });
+  const [scope, setScope] = useState<"all" | "current_network">("all");
+  const { data: summary } = useGetDeviceSummaryQuery(scope === "current_network" ? { same_network: true } : undefined);
+  const { data: devices = [], isLoading } = useGetDevicesQuery(scope === "current_network" ? { same_network: true } : undefined);
   const { data: activeBlocks = [] } = useGetSecurityBlocksQuery(true);
   const [blockDevice, { isLoading: blocking }] = useBlockDeviceMutation();
   const [unblockSecurityBlock, { isLoading: unblocking }] = useUnblockSecurityBlockMutation();
@@ -68,7 +70,24 @@ export default function AdminDevicesPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge tone="sky">Current network only</Badge>
+            <button
+              type="button"
+              onClick={() => setScope("all")}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                scope === "all" ? "bg-sky-600 text-white" : "border border-sky-200 bg-white text-slate-700"
+              }`}
+            >
+              All devices
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope("current_network")}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                scope === "current_network" ? "bg-sky-600 text-white" : "border border-sky-200 bg-white text-slate-700"
+              }`}
+            >
+              Current network only
+            </button>
             <Badge tone="emerald">{formatNumber(summary?.active_devices ?? 0)} trusted</Badge>
             <Badge tone="amber">{formatNumber(summary?.suspicious_devices ?? 0)} under review</Badge>
           </div>
@@ -80,7 +99,7 @@ export default function AdminDevicesPage() {
           icon={Monitor}
           label="Same-network devices"
           value={formatNumber(summary?.total_devices)}
-          detail="Endpoints detected on the current control network."
+          detail={scope === "current_network" ? "Endpoints detected on the current control network." : "All devices stored in NetGuard."}
           tone="emerald"
         />
         <StatCard
@@ -106,7 +125,14 @@ export default function AdminDevicesPage() {
         />
       </div>
 
-      <Panel title="Current network inventory" description="Only devices seen on the active control network are listed here.">
+      <Panel
+        title={scope === "current_network" ? "Current network inventory" : "All devices inventory"}
+        description={
+          scope === "current_network"
+            ? "Only devices seen on the active control network are listed here."
+            : "All registered devices are shown here, with a switch available for current-network filtering."
+        }
+      >
         {isLoading ? (
           <EmptyState title="Loading devices" description="Fetching the current device inventory from the backend." />
         ) : devices.length ? (
@@ -162,8 +188,12 @@ export default function AdminDevicesPage() {
           />
         ) : (
           <EmptyState
-            title="No devices on this network"
-            description="NetGuard did not detect any devices on the current control network yet."
+            title={scope === "current_network" ? "No devices on this network" : "No devices available"}
+            description={
+              scope === "current_network"
+                ? "NetGuard did not detect any devices on the current control network yet. Switch to All devices to view the full inventory."
+                : "There are no registered devices in the system yet."
+            }
           />
         )}
       </Panel>

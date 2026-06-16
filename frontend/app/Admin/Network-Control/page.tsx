@@ -68,7 +68,10 @@ const actionLabels: Record<NetworkEdgeActionRequest["action"], string> = {
 
 export default function AdminNetworkControlPage() {
   const { data: profiles = [], refetch: refetchProfiles, isLoading: profilesLoading } = useGetNetworkEdgeProfilesQuery();
-  const { data: devices = [], isLoading: devicesLoading } = useGetDevicesQuery({ same_network: true });
+  const [scope, setScope] = useState<"all" | "current_network">("all");
+  const { data: devices = [], isLoading: devicesLoading } = useGetDevicesQuery(
+    scope === "current_network" ? { same_network: true } : undefined
+  );
   const { data: activeBlocks = [] } = useGetSecurityBlocksQuery(true);
   const { data: health, refetch: refetchHealth } = useGetNetworkEdgeHealthQuery();
   const { data: logs = [], refetch: refetchLogs, isFetching: logsFetching } = useGetNetworkEdgeActionLogsQuery(undefined);
@@ -264,7 +267,25 @@ export default function AdminNetworkControlPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge tone="violet">{devices.length} devices on network</Badge>
+            <button
+              type="button"
+              onClick={() => setScope("all")}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                scope === "all" ? "bg-violet-600 text-white" : "border border-violet-200 bg-white text-slate-700"
+              }`}
+            >
+              All devices
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope("current_network")}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                scope === "current_network" ? "bg-violet-600 text-white" : "border border-violet-200 bg-white text-slate-700"
+              }`}
+            >
+              Current network only
+            </button>
+            <Badge tone="violet">{devices.length} devices</Badge>
             <Badge tone={health?.success ? "emerald" : "amber"}>{health?.message ?? "Health not checked yet"}</Badge>
             <Badge tone={hasNetworkEdgeProfile ? "emerald" : "rose"}>
               {hasNetworkEdgeProfile ? "Edge profile ready" : "Local control active"}
@@ -281,7 +302,14 @@ export default function AdminNetworkControlPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
-        <Panel title="Live network devices" description="Select a device detected on the current network.">
+        <Panel
+          title={scope === "current_network" ? "Live network devices" : "Device inventory"}
+          description={
+            scope === "current_network"
+              ? "Select a device detected on the current network."
+              : "Select a device from the full inventory, with the option to switch to the current network view."
+          }
+        >
           {devicesLoading ? (
             <EmptyState title="Loading devices" description="Fetching devices on the active network." />
           ) : devices.length ? (
@@ -312,7 +340,14 @@ export default function AdminNetworkControlPage() {
               ))}
             </div>
           ) : (
-            <EmptyState title="No network devices" description="No devices are currently visible on the active control network." />
+            <EmptyState
+              title={scope === "current_network" ? "No network devices" : "No devices available"}
+              description={
+                scope === "current_network"
+                  ? "No devices are currently visible on the active control network. Switch to All devices for the full inventory."
+                  : "NetGuard did not find any devices to display yet."
+              }
+            />
           )}
         </Panel>
 
