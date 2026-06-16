@@ -107,6 +107,16 @@ const deviceApi = apiSlice.injectEndpoints({
         { type: "Device", id },
       ],
     }),
+    deleteDevice: builder.mutation<
+      { message: string; deleted_device_id: number; deleted_device_name: string; deleted_device_mac: string },
+      number
+    >({
+      query: (id) => ({
+        url: `devices/${id}/`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Device", "DeviceSummary", "SecurityBlock"],
+    }),
   }),
 });
 
@@ -118,4 +128,5 @@ export const {
   useUpdateDeviceMutation,
   useUpdateDeviceStatusMutation,
   useBlockDeviceMutation,
+  useDeleteDeviceMutation,
 } = deviceApi;

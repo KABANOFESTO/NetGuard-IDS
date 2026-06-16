@@ -76,7 +76,7 @@ class DeviceListCreateView(generics.ListCreateAPIView):
         )
 
 
-class DeviceDetailView(generics.RetrieveUpdateAPIView):
+class DeviceDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DeviceSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Device.objects.all().select_related("owner")
@@ -97,6 +97,34 @@ class DeviceDetailView(generics.RetrieveUpdateAPIView):
             additional_data={"device_id": device.id, "status": device.status},
         )
         return response
+
+    def destroy(self, request, *args, **kwargs):
+        device = self.get_object()
+        if request.user.role != "Admin":
+          return Response({"error": "Only admins can delete devices."}, status=status.HTTP_403_FORBIDDEN)
+
+        device_snapshot = DeviceSerializer(device, context={"request": request}).data
+        log_action(
+            request,
+            "DEVICE_DELETE",
+            target_user=device.owner,
+            additional_data={
+                "device_id": device.id,
+                "device_name": device.device_name,
+                "mac_address": device.mac_address,
+                "status": device.status,
+            },
+        )
+        self.perform_destroy(device)
+        return Response(
+            {
+                "message": "Device deleted successfully.",
+                "deleted_device_id": device_snapshot["id"],
+                "deleted_device_name": device_snapshot["device_name"],
+                "deleted_device_mac": device_snapshot["mac_address"],
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class DeviceStatusUpdateView(generics.UpdateAPIView):

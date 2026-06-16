@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Laptop, Monitor, Network, ShieldCheck, Smartphone } from "lucide-react";
+import { Laptop, Monitor, Network, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge, DataTable, EmptyState, PageHeader, Panel, StatCard } from "@/components/portal/PortalUI";
-import { useBlockDeviceMutation, useGetDevicesQuery, useGetDeviceSummaryQuery } from "@/lib/redux/slices/DeviceSlice";
+import { useBlockDeviceMutation, useDeleteDeviceMutation, useGetDevicesQuery, useGetDeviceSummaryQuery } from "@/lib/redux/slices/DeviceSlice";
 import { useGetSecurityBlocksQuery, useUnblockSecurityBlockMutation } from "@/lib/redux/slices/SecuritySlice";
 import { formatDateTime, formatNumber, statusTone } from "@/lib/portal/formatters";
 import { getApiErrorMessage } from "@/lib/utils/apiError";
@@ -16,6 +16,7 @@ export default function AdminDevicesPage() {
   const { data: devices = [], isLoading } = useGetDevicesQuery(scope === "current_network" ? { same_network: true } : undefined);
   const { data: activeBlocks = [] } = useGetSecurityBlocksQuery(true);
   const [blockDevice, { isLoading: blocking }] = useBlockDeviceMutation();
+  const [deleteDevice, { isLoading: deleting }] = useDeleteDeviceMutation();
   const [unblockSecurityBlock, { isLoading: unblocking }] = useUnblockSecurityBlockMutation();
 
   const activeBlockByDeviceId = new Map(
@@ -45,6 +46,18 @@ export default function AdminDevicesPage() {
       toast.success(response.message);
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Unable to unblock device."));
+    }
+  };
+
+  const handleDelete = async (deviceId: number) => {
+    const confirmed = window.confirm("Delete this device from NetGuard inventory? This removes its record and related block history.");
+    if (!confirmed) return;
+
+    try {
+      const response = await deleteDevice(deviceId).unwrap();
+      toast.success(response.message);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Unable to delete device."));
     }
   };
 
@@ -164,26 +177,38 @@ export default function AdminDevicesPage() {
               ),
               status: <Badge tone={statusTone(device.status)}>{device.status}</Badge>,
               last_seen: formatDateTime(device.last_seen),
-              action:
-                device.status === "blocked" ? (
+              action: (
+                <div className="flex flex-wrap gap-2">
+                  {device.status === "blocked" ? (
+                    <button
+                      type="button"
+                      disabled={unblocking}
+                      onClick={() => handleUnblock(device.id)}
+                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Unblock
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={blocking}
+                      onClick={() => handleBlock(device.id)}
+                      className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Block
+                    </button>
+                  )}
                   <button
                     type="button"
-                    disabled={unblocking}
-                    onClick={() => handleUnblock(device.id)}
-                    className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={deleting}
+                    onClick={() => handleDelete(device.id)}
+                    className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Unblock
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={blocking}
-                    onClick={() => handleBlock(device.id)}
-                    className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Block
-                  </button>
-                ),
+                </div>
+              ),
             }))}
           />
         ) : (
