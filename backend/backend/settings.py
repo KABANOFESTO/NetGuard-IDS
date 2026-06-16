@@ -203,9 +203,22 @@ EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=5, cast=int)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 FRONTEND_LOGIN_URL = config("FRONTEND_LOGIN_URL", default="http://localhost:3000/auth")
+ALERT_EMAIL_NOTIFICATIONS_ENABLED = config(
+    "ALERT_EMAIL_NOTIFICATIONS_ENABLED",
+    default=bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD),
+    cast=bool,
+)
+ALERT_EMAIL_ASYNC = config("ALERT_EMAIL_ASYNC", default=True, cast=bool)
+
+for frontend_origin in {FRONTEND_URL, "https://net-guard-ids.vercel.app"}:
+    if frontend_origin and frontend_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(frontend_origin)
+    if frontend_origin and frontend_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(frontend_origin)
 
 
 # Password validation
