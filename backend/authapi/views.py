@@ -17,7 +17,7 @@ from AuditLog.audit_log_utils import log_action
 from devices.models import Device
 from devices.serializers import DeviceSerializer
 from security.models import BlockedEntity
-from security.network_scope import get_client_ip, is_controlled_request
+from security.network_scope import get_client_ip, get_request_network_scope, is_controlled_request
 from monitoring.services import create_network_activity
 import logging
 
@@ -244,11 +244,11 @@ class MyTokenObtainView(APIView):
 
     def _build_network_access_context(self, user, device):
         request_mac = getattr(self, "_current_request_mac", "")
-        in_controlled_network = is_controlled_request(self.request)
+        network_scope = get_request_network_scope(self.request)
         blocked_by_mac = bool(
-            in_controlled_network
-            and request_mac
-            and BlockedEntity.objects.filter(mac_address=request_mac, is_active=True).exists()
+            request_mac
+            and network_scope
+            and BlockedEntity.objects.filter(mac_address=request_mac, network_scope=network_scope, is_active=True).exists()
         )
         if device is None:
             if blocked_by_mac:
@@ -267,11 +267,11 @@ class MyTokenObtainView(APIView):
                 "message": "Network access granted. No device record was attached to this session.",
             }
 
-        blocked = in_controlled_network and (
-            device.status == "blocked"
-            or BlockedEntity.objects.filter(device=device, is_active=True).exists()
-            or blocked_by_mac
+        blocked_by_device = bool(
+            network_scope
+            and BlockedEntity.objects.filter(device=device, network_scope=network_scope, is_active=True).exists()
         )
+        blocked = blocked_by_device or blocked_by_mac
         attention = not device.is_registered or device.status in {"unknown", "suspicious"}
         access_status = "blocked" if blocked else "granted_with_attention" if attention else "granted"
         device_state = "blocked" if blocked else "unregistered" if not device.is_registered else "known"
@@ -305,10 +305,15 @@ class MyTokenObtainView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        request_network_scope = get_request_network_scope(request)
         if (
-            is_controlled_request(request)
-            and self._current_request_mac
-            and BlockedEntity.objects.filter(mac_address=self._current_request_mac, is_active=True).exists()
+            self._current_request_mac
+            and request_network_scope
+            and BlockedEntity.objects.filter(
+                mac_address=self._current_request_mac,
+                network_scope=request_network_scope,
+                is_active=True,
+            ).exists()
         ):
             create_network_activity(
                 request=request,
@@ -331,8 +336,8 @@ class MyTokenObtainView(APIView):
         if user:
             device = self._ensure_device_record(request, user, ip_address)
             if device and device.owner_id == user.id and (
-                device.status == "blocked"
-                or BlockedEntity.objects.filter(device=device, is_active=True).exists()
+                request_network_scope
+                and BlockedEntity.objects.filter(device=device, network_scope=request_network_scope, is_active=True).exists()
             ):
                 create_network_activity(
                     request=request,
@@ -1056,9 +1061,11 @@ class NetworkAccessContextView(APIView):
     def get(self, request):
         device = self._resolve_current_device(request)
         request_mac = self._get_request_mac(request)
-        in_controlled_network = is_controlled_request(request)
+        network_scope = get_request_network_scope(request)
         blocked_by_mac = bool(
-            in_controlled_network and request_mac and BlockedEntity.objects.filter(mac_address=request_mac, is_active=True).exists()
+            request_mac
+            and network_scope
+            and BlockedEntity.objects.filter(mac_address=request_mac, network_scope=network_scope, is_active=True).exists()
         )
         if device is None:
             if blocked_by_mac:
@@ -1085,9 +1092,11 @@ class NetworkAccessContextView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        blocked = in_controlled_network and (
-            device.status == "blocked" or BlockedEntity.objects.filter(device=device, is_active=True).exists() or blocked_by_mac
+        blocked_by_device = bool(
+            network_scope
+            and BlockedEntity.objects.filter(device=device, network_scope=network_scope, is_active=True).exists()
         )
+        blocked = blocked_by_device or blocked_by_mac
         attention = not device.is_registered or device.status in {"unknown", "suspicious"}
         access_status = "blocked" if blocked else "granted_with_attention" if attention else "granted"
         device_state = "blocked" if blocked else "unregistered" if not device.is_registered else "known"

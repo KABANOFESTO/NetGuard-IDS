@@ -7,6 +7,7 @@ from monitoring.models import NetworkActivity
 
 from .models import BlockedEntity, NetworkEdgeActionLog, NetworkEdgeProfile
 from .network_edge import NetworkEdgeError, NetworkEdgeResult, get_edge_client
+from .network_scope import get_request_network_scope
 
 
 def get_default_edge_profile():
@@ -132,17 +133,21 @@ def block_entity(*, request=None, user=None, device=None, mac_address="", reason
     resolved_mac = mac_address
     if not resolved_mac and device is not None:
         resolved_mac = getattr(device, "mac_address", "")
+    network_scope = get_request_network_scope(request) if request is not None else ""
     lookup = {"is_active": True}
     if user is not None:
         lookup["user"] = user
     if device is not None:
         lookup["device"] = device
+    if network_scope:
+        lookup["network_scope"] = network_scope
     if user is None and device is None and resolved_mac:
         lookup["mac_address"] = resolved_mac
 
     block, created = BlockedEntity.objects.update_or_create(
         defaults={
             "mac_address": resolved_mac,
+            "network_scope": network_scope,
             "reason": reason,
             "blocked_by": getattr(request, "user", None) if request and request.user.is_authenticated else None,
             "notes": notes,
@@ -171,6 +176,7 @@ def block_entity(*, request=None, user=None, device=None, mac_address="", reason
                 "reason": reason,
                 "block_id": block.id,
                 "source": "admin_action",
+                "network_scope": network_scope,
             },
             data_usage_mb=0,
             is_suspicious=True,
@@ -206,6 +212,7 @@ def block_entity(*, request=None, user=None, device=None, mac_address="", reason
             "created": created,
             "device_id": getattr(device, "id", None),
             "reason": reason,
+            "network_scope": network_scope,
         },
     )
     return block, created

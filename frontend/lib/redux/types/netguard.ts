@@ -172,6 +172,7 @@ export interface SecurityBlock {
   device: number | null;
   device_name: string | null;
   reason: "intrusion" | "suspicious_activity" | "manual_block";
+  network_scope: string;
   blocked_by: number | null;
   blocked_by_email: string | null;
   blocked_at: string;
