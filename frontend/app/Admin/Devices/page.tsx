@@ -12,8 +12,9 @@ import { getApiErrorMessage } from "@/lib/utils/apiError";
 
 export default function AdminDevicesPage() {
   const [scope, setScope] = useState<"all" | "current_network">("all");
-  const { data: summary } = useGetDeviceSummaryQuery(scope === "current_network" ? { same_network: true } : undefined);
-  const { data: devices = [], isLoading } = useGetDevicesQuery(scope === "current_network" ? { same_network: true } : undefined);
+  const deviceFilter = scope === "current_network" ? { same_network: true } : undefined;
+  const { data: summary } = useGetDeviceSummaryQuery(deviceFilter);
+  const { data: devices = [], isLoading } = useGetDevicesQuery(deviceFilter);
   const { data: activeBlocks = [] } = useGetSecurityBlocksQuery(true);
   const [blockDevice, { isLoading: blocking }] = useBlockDeviceMutation();
   const [deleteDevice, { isLoading: deleting }] = useDeleteDeviceMutation();
@@ -37,7 +38,7 @@ export default function AdminDevicesPage() {
   const handleUnblock = async (deviceId: number) => {
     const activeBlock = activeBlockByDeviceId.get(deviceId);
     if (!activeBlock) {
-      toast.error("No active block record was found for this device.");
+      toast.error("No active network block was found for this device.");
       return;
     }
 
@@ -65,8 +66,8 @@ export default function AdminDevicesPage() {
     <div className="space-y-6 bg-slate-50 px-4 py-6 md:px-6 lg:px-8">
       <PageHeader
         eyebrow="Device Control"
-        title="Track devices seen on the current university network and control them without typing MAC addresses."
-        description="This view shows only endpoints detected on the active network segment, so admins can review IP and MAC identity, see trust state, and block or unblock devices directly from the list."
+        title="Control devices by the network they are connected through."
+        description="Admins can review device identity, see active network blocks, and remove inventory records without typing MAC addresses manually."
       />
 
       <div className="rounded-3xl border border-sky-200 bg-sky-50/80 p-4 shadow-sm">
@@ -76,9 +77,9 @@ export default function AdminDevicesPage() {
               <Network className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900">Current network status</p>
+              <p className="text-sm font-semibold text-slate-900">Network-scoped control</p>
               <p className="mt-1 text-sm text-slate-600">
-                NetGuard is showing devices detected on the active control network. Devices on other Wi-Fi networks stay accessible normally unless they are linked to a block record.
+                Blocks are applied to the network scope where the admin creates them. If the same device connects through another router or Wi-Fi, that separate network is evaluated independently.
               </p>
             </div>
           </div>
@@ -110,7 +111,7 @@ export default function AdminDevicesPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Monitor}
-          label="Same-network devices"
+          label={scope === "current_network" ? "Same-network devices" : "All devices"}
           value={formatNumber(summary?.total_devices)}
           detail={scope === "current_network" ? "Endpoints detected on the current control network." : "All devices stored in NetGuard."}
           tone="emerald"
@@ -119,14 +120,14 @@ export default function AdminDevicesPage() {
           icon={ShieldCheck}
           label="Trusted now"
           value={formatNumber(summary?.active_devices)}
-          detail="Active devices that are not blocked or suspicious."
+          detail="Active devices without a suspicious inventory state."
           tone="sky"
         />
         <StatCard
           icon={Laptop}
           label="Under review"
           value={formatNumber(summary?.suspicious_devices)}
-          detail="Devices marked suspicious because of monitoring rules."
+          detail="Devices marked suspicious by monitoring rules."
           tone="amber"
         />
         <StatCard
@@ -143,11 +144,11 @@ export default function AdminDevicesPage() {
         description={
           scope === "current_network"
             ? "Only devices seen on the active control network are listed here."
-            : "All registered devices are shown here, with a switch available for current-network filtering."
+            : "All registered devices are shown here, with active network blocks clearly marked."
         }
       >
         {isLoading ? (
-          <EmptyState title="Loading devices" description="Fetching the current device inventory from the backend." />
+          <EmptyState title="Loading devices" description="Fetching the device inventory from the backend." />
         ) : devices.length ? (
           <DataTable
             columns={[
@@ -158,58 +159,68 @@ export default function AdminDevicesPage() {
               { key: "last_seen", label: "Last seen" },
               { key: "action", label: "Action" },
             ]}
-            rows={devices.map((device) => ({
-              device: (
-                <div>
-                  <p className="font-medium text-slate-900">{device.device_name}</p>
-                  <p className="text-xs text-slate-500">
-                    {device.device_type}
-                    {device.operating_system ? ` • ${device.operating_system}` : ""}
-                  </p>
-                </div>
-              ),
-              owner: device.owner_name || device.owner_email || "Unassigned",
-              identity: (
-                <div>
-                  <p>{device.ip_address}</p>
-                  <p className="text-xs text-slate-500">{device.mac_address}</p>
-                </div>
-              ),
-              status: <Badge tone={statusTone(device.status)}>{device.status}</Badge>,
-              last_seen: formatDateTime(device.last_seen),
-              action: (
-                <div className="flex flex-wrap gap-2">
-                  {device.status === "blocked" ? (
+            rows={devices.map((device) => {
+              const activeBlock = activeBlockByDeviceId.get(device.id);
+              return {
+                device: (
+                  <div>
+                    <p className="font-medium text-slate-900">{device.device_name}</p>
+                    <p className="text-xs text-slate-500">
+                      {device.device_type}
+                      {device.operating_system ? ` - ${device.operating_system}` : ""}
+                    </p>
+                  </div>
+                ),
+                owner: device.owner_name || device.owner_email || "Unassigned",
+                identity: (
+                  <div>
+                    <p>{device.ip_address}</p>
+                    <p className="text-xs text-slate-500">{device.mac_address}</p>
+                  </div>
+                ),
+                status: activeBlock ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="rose">Network blocked</Badge>
+                    {activeBlock.network_scope ? <Badge tone="slate">{activeBlock.network_scope}</Badge> : null}
+                  </div>
+                ) : (
+                  <Badge tone={statusTone(device.status)}>{device.status}</Badge>
+                ),
+                last_seen: formatDateTime(device.last_seen),
+                action: (
+                  <div className="flex flex-wrap gap-2">
+                    {activeBlock ? (
+                      <button
+                        type="button"
+                        disabled={unblocking}
+                        onClick={() => handleUnblock(device.id)}
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Unblock
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={blocking}
+                        onClick={() => handleBlock(device.id)}
+                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Block
+                      </button>
+                    )}
                     <button
                       type="button"
-                      disabled={unblocking}
-                      onClick={() => handleUnblock(device.id)}
-                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={deleting}
+                      onClick={() => handleDelete(device.id)}
+                      className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Unblock
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={blocking}
-                      onClick={() => handleBlock(device.id)}
-                      className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Block
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={deleting}
-                    onClick={() => handleDelete(device.id)}
-                    className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </button>
-                </div>
-              ),
-            }))}
+                  </div>
+                ),
+              };
+            })}
           />
         ) : (
           <EmptyState

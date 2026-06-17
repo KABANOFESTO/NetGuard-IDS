@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("security", "0003_blockedentity_mac_address"),
+        ("security", "0004_merge_20260615_1655"),
     ]
 
     operations = [
@@ -17,6 +17,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="blockedentity",
-            index=models.Index(fields=["network_scope"], name="sec_block_scope_idx"),
+            index=models.Index(fields=["network_scope"], name="security_bl_network_f0b6be_idx"),
         ),
     ]
