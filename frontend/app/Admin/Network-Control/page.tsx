@@ -134,7 +134,7 @@ export default function AdminNetworkControlPage() {
     ? activeBlocks.find((block) => block.device === selectedDevice.id && block.is_active)
     : null;
   const selectedDeviceRisk = selectedDevice
-    ? selectedDevice.status === "blocked"
+    ? activeBlockForSelectedDevice
       ? { label: "Blocked", tone: "rose" as const }
       : selectedDevice.status === "suspicious" || !selectedDevice.is_registered
         ? { label: "Watch", tone: "amber" as const }
@@ -364,6 +364,9 @@ export default function AdminNetworkControlPage() {
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {selectedDeviceRisk ? <Badge tone={selectedDeviceRisk.tone}>{selectedDeviceRisk.label}</Badge> : null}
+                      {activeBlockForSelectedDevice?.network_scope ? (
+                        <Badge tone="slate">{activeBlockForSelectedDevice.network_scope}</Badge>
+                      ) : null}
                       <Badge tone={statusTone(selectedDevice.status)}>{selectedDevice.status}</Badge>
                       <Badge tone={selectedDevice.is_registered ? "emerald" : "amber"}>
                         {selectedDevice.is_registered ? "Registered" : "Unregistered"}

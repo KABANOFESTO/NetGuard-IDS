@@ -17,7 +17,7 @@ from AuditLog.audit_log_utils import log_action
 from devices.models import Device
 from devices.serializers import DeviceSerializer
 from security.models import BlockedEntity
-from security.network_scope import get_client_ip, get_request_network_scope, is_controlled_request
+from security.network_scope import get_client_ip, get_request_network_scope
 from monitoring.services import create_network_activity
 import logging
 
