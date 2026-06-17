@@ -17,6 +17,7 @@ class BlockedEntitySerializer(serializers.ModelSerializer):
             "device",
             "device_name",
             "mac_address",
+            "network_scope",
             "reason",
             "blocked_by",
             "blocked_by_email",
@@ -26,7 +27,7 @@ class BlockedEntitySerializer(serializers.ModelSerializer):
             "notes",
             "is_active",
         ]
-    read_only_fields = ["blocked_by", "blocked_at", "unblocked_at"]
+        read_only_fields = ["blocked_by", "blocked_at", "unblocked_at", "network_scope"]
 
     def validate(self, attrs):
         if not attrs.get("user") and not attrs.get("device") and not attrs.get("mac_address"):

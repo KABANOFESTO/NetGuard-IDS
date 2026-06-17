@@ -4,9 +4,9 @@ from .models import BlockedEntity, NetworkEdgeActionLog, NetworkEdgeProfile
 
 @admin.register(BlockedEntity)
 class BlockedEntityAdmin(admin.ModelAdmin):
-    list_display = ("id", "reason", "user", "device", "is_active", "blocked_at", "unblocked_at")
-    list_filter = ("reason", "is_active", "blocked_at")
-    search_fields = ("user__email", "device__device_name", "device__mac_address", "mac_address", "notes")
+    list_display = ("id", "reason", "user", "device", "network_scope", "is_active", "blocked_at", "unblocked_at")
+    list_filter = ("reason", "is_active", "network_scope", "blocked_at")
+    search_fields = ("user__email", "device__device_name", "device__mac_address", "mac_address", "network_scope", "notes")
 
 
 @admin.register(NetworkEdgeProfile)

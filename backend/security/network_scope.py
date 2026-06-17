@@ -52,6 +52,15 @@ def get_reference_network(ip_address: str | None):
     return network
 
 
+def get_request_network_scope(request) -> str:
+    explicit_scope = request.headers.get("X-Network-Scope", "").strip()
+    if explicit_scope:
+        return explicit_scope
+
+    network = get_reference_network(get_client_ip(request))
+    return str(network) if network is not None else ""
+
+
 def is_same_network(ip_address: str | None, reference_ip: str | None) -> bool:
     network = get_reference_network(reference_ip)
     if network is None or not ip_address:

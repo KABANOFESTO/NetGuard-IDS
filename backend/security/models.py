@@ -116,6 +116,7 @@ class BlockedEntity(models.Model):
     )
 
     mac_address = models.CharField(max_length=100, blank=True, db_index=True)
+    network_scope = models.CharField(max_length=120, blank=True, db_index=True)
 
     reason = models.CharField(max_length=100, choices=BLOCK_REASON_CHOICES)
 
@@ -138,6 +139,7 @@ class BlockedEntity(models.Model):
         indexes = [
             models.Index(fields=['is_active']),
             models.Index(fields=['reason']),
+            models.Index(fields=['network_scope']),
         ]
 
     def __str__(self):

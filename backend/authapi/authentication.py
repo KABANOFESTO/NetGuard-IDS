@@ -3,7 +3,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from devices.models import Device
 from security.models import BlockedEntity
-from security.network_scope import get_client_ip, is_controlled_ip
+from security.network_scope import get_request_network_scope
 
 
 class DeviceAwareJWTAuthentication(JWTAuthentication):
@@ -15,8 +15,7 @@ class DeviceAwareJWTAuthentication(JWTAuthentication):
         user, token = result
         device_id = request.headers.get("X-Device-Id")
         mac_address = request.headers.get("X-Device-Mac")
-        request_ip = get_client_ip(request)
-        in_controlled_network = is_controlled_ip(request_ip)
+        network_scope = get_request_network_scope(request)
 
         device = None
         if device_id:
@@ -25,18 +24,25 @@ class DeviceAwareJWTAuthentication(JWTAuthentication):
             device = Device.objects.filter(mac_address=mac_address, owner=user).first()
 
         blocked_by_mac = False
-        if mac_address and in_controlled_network:
-            blocked_by_mac = BlockedEntity.objects.filter(mac_address=mac_address, is_active=True).exists()
+        if mac_address and network_scope:
+            blocked_by_mac = BlockedEntity.objects.filter(
+                mac_address=mac_address,
+                network_scope=network_scope,
+                is_active=True,
+            ).exists()
 
         if device is not None:
             request.current_device = device
+            blocked_by_device = (
+                network_scope
+                and BlockedEntity.objects.filter(
+                    device=device,
+                    network_scope=network_scope,
+                    is_active=True,
+                ).exists()
+            )
             is_blocked = (
-                in_controlled_network
-                and (
-                    device.status == "blocked"
-                    or BlockedEntity.objects.filter(device=device, is_active=True).exists()
-                    or blocked_by_mac
-                )
+                blocked_by_device or blocked_by_mac
             )
             if is_blocked:
                 raise AuthenticationFailed(
